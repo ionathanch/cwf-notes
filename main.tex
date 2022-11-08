@@ -1,0 +1,2024 @@
+\documentclass{article}
+\usepackage[no-math]{fontspec}
+\usepackage{mlmodern}
+\usepackage{relsize}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{natbib}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage[UKenglish, cleanlook]{isodate}
+\usepackage[nottoc]{tocbibind}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{stmaryrd}
+\usepackage{mathtools}
+\usepackage{mathpartir}
+\usepackage{minted}
+\usepackage{tikz-cd}
+\usepackage{xspace}
+\usepackage{xcolor}
+\usepackage[pagebackref,bookmarksnumbered,linktocpage,colorlinks,pdfusetitle]{hyperref}
+\usepackage[capitalize, noabbrev]{cleveref}
+
+\renewcommand{\backrefalt}[4]{\textcolor{gray}{\ifcase #1\or $\hookrightarrow$~page~#2\else $\hookrightarrow$~pages~#2\fi}}
+\renewcommand{\url}[1]{\href{#1}{\textsf{#1}}}
+\allowdisplaybreaks
+
+% fonts
+\newfontfamily{\codefont}{iosevka.ttc}
+\newfontfamily{\jpfont}{kai.ttf}
+
+% general macros
+\newcommand{\doi}[1]{doi:\href{https://doi.org/#1}{\textsf{#1}}}
+\newcommand{\ie}{\textit{i.e.}\@\xspace}
+\newcommand{\eg}{\textit{e.g.}\@\xspace}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO}: #1}}
+\renewcommand{\_}{\textrm{\textscale{.5}{\textunderscore}}}
+\DeclarePairedDelimiter{\ctxt}{\langle}{\rangle}
+\DeclarePairedDelimiter{\set}{\{}{\}}
+\DeclarePairedDelimiter{\interp}{\llbracket}{\rrbracket}
+\newlength{\punctwidth}
+\newcommand{\punctstack}[1]{#1%
+  \settowidth{\punctwidth}{#1}%
+  \hspace*{-\the\punctwidth}%
+}
+
+% category theory macros
+\newcommand{\op}[1]{#1^{\mathrm{op}}}
+\newcommand{\cat}[1]{\textbf{#1}}
+\newcommand{\nt}{\sigma}
+\newcommand{\Tm}{\mathrm{Tm}}
+\newcommand{\Ty}{\mathrm{Ty}}
+\newcommand{\id}{\mathrm{id}}
+\newcommand{\p}{\mathrm{p}}
+\newcommand{\q}{\mathrm{q}}
+\newcommand{\wk}{\mathrm{wk}}
+\renewcommand{\sb}{\mathrm{sb}}
+\newcommand{\Unit}{\mathrm{Unit}}
+\newcommand{\unit}{\mathrm{unit}}
+\newcommand{\Empty}{\mathrm{Empty}}
+\newcommand{\Absurd}{\mathrm{absurd}}
+\newcommand{\pitype}{\mathrm{Pi}}
+\newcommand{\lam}{\mathrm{lam}}
+\newcommand{\app}{\mathrm{app}}
+\newcommand{\univ}{\mathrm{Univ}}
+\newcommand{\El}{\mathrm{el}}
+\newcommand{\yo}{\text{\large \jpfont よ}}
+\newcommand{\To}{\Rightarrow}
+
+% type theory macros
+\newcommand{\Fun}[3]{(#1 \mathbin{:} #2) \mathrel{\to} #3}
+\newcommand{\iFun}[3]{\{#1 \mathbin{:} #2\} \mathrel{\to} #3}
+\newcommand{\fun}[2]{\lambda #1 \mathpunct{.} #2}
+\newcommand{\Pair}[3]{(#1 \mathbin{:} #2) \mathrel{\times} #3}
+\newcommand{\Set}{\mathsf{Set}}
+\newcommand{\bool}{\mathsf{Bool}}
+\newcommand{\var}[1]{\mathsf{v}_{#1}}
+\newcommand{\absurd}[2]{\mathsf{absurd}_{#1}\,#2}
+\newcommand{\el}[1]{\mathsf{el}\,#1}
+\newcommand{\code}[1]{#1^{\complement}}
+
+% set theory macros
+\newcommand{\sFun}[3]{(#1 \mathbin{\in} #2) \mathrel{\to} #3}
+\newcommand{\isFun}[3]{\{#1 \mathbin{\in} #2\} \mathrel{\to} #3}
+\newcommand{\sfun}[2]{#1 \mathrel{\mapsto} #2}
+\newcommand{\sPair}[3]{(#1 \mathbin{\in} #2) \mathrel{\times} #3}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{exercise}[definition]{Exercise}
+
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+
+\title{Notes on Categories with Families}
+\author{Jonathan Chan}
+%\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+
+Categories with families (CwFs) \citep{itt} are a framework for giving a semantic model of a type theory,
+typically one that resembles some form of Martin-L\"of Type Theory\punctstack{,}%
+\footnote{\citet{actt} summarizes the kinds of type theories that cannot be modelled as \emph{categories with representable maps} (CwRs):
+\begin{quote}
+    Although the notion of a CwR covers a wide range of type theories including Martin-L\"of type theory,
+    univalent type theory, and cubical type theory, it cannot cover some important type theories.
+    Characteristics of type theories considered in [\citet{actt}] are that contexts are single-layered
+    and that assumptions in a context can be used at any time, any number of times.
+    Type theories with “dual-contexts” are not of this sort.
+    Substructural type theories such as linear logic are out of scope since assumptions can be used a limited number of times.
+\end{quote}
+As CwRs are more or less extensions of CwFs, the same limitations apply to CwFs as well.}
+that closely mirrors its syntactic structure.
+A CwF itself is not a model,
+but rather a signature into which both the syntax and the semantics fit,
+and provides a more succinct justification of the interpretation from the syntax into the semantics.
+To prove, for instance, the consistency of a type theory,
+we would proceed roughly as follows:
+
+\begin{enumerate}
+    \item Starting from the definition of a CwF,
+    extend it with the desired type structures as a presentation of
+    a \emph{generalized algebraic theory} (GAT) \citep{gat}.
+    These form a category of CwFs with structures.
+    \item Construct from this the syntax of a type theory,
+    with which a CwF called the \emph{term model} can be defined.
+    \item Construct an interpretation function from the term model to an arbitrary CwF,
+    and show that the interpretation is \emph{sound}.
+    This implies that the term model is initial in the category of CwFs with structures \citep{gatcwf}.
+    \item Provide a semantic model of the type theory as another CwF.
+    \item Show that consistency of the type theory corresponds to some property that holds in the semantic model;
+    this should follow from initiality.
+\end{enumerate}
+
+The semantic model can be defined in a variety of suitable mathematical theories: it could be a set-theoretic model, a type-theoretic model, a realizability model, and so on. \todo{Be more specific and cite.}
+
+This note is aimed towards those familiar with the usual formulations of and concepts in type theory.
+Even so, some minimal category-theoretic knowledge is needed to begin promptly.
+The reader should be comfortable with the definitions of categories, functors, initial and terminal objects, and natural transformations,
+although the latter will covered in a little detail when needed.
+All further category-theoretic concepts will be defined in due time.
+
+\section{Components of a CwF}
+
+As a terse summary, a category with families consists of the following:
+
+\begin{itemize}
+    \item A category $\mathcal{C}$ with a terminal object $\bullet$ and morphisms $\ctxt{}_\Gamma : \Gamma \to \bullet$
+    for every $\Gamma \in \mathcal{C}$;
+    \item A \emph{contravariant functor} $T : \op{\mathcal{C}} \to \cat{Fam}$ to the \emph{category of families}
+    with objects $T(\Gamma) = \set{\Tm_{\mathcal{C}}(\Gamma, A)}_{A \in \Ty_{\mathcal{C}}(\Gamma)}$;
+    \item A \emph{comprehension} corresponding to the \emph{universal element} of a particular contravariant functor $S_{\Gamma, A} : \op{\mathcal{C}} \to \cat{Fam}$ defined over $\Gamma \in \mathcal{C}, A \in \Ty_{\mathcal{C}}(\Gamma)$; and
+    \item Type formers, induction and elimination forms, and computation rules, as well as uniqueness rules if needed.
+\end{itemize}
+
+In the following subsections, I detail what each of these pieces is meant to mean in the context of type theory.
+
+\subsection{The Category of Contexts}
+
+\begin{itemize}
+    \item The objects of $\mathcal{C}$ represents typing contexts,
+    with the terminal object $\bullet$ representing the empty context.
+    The morphisms of $\mathcal{C}$ represents sequences of substitutions.
+    \item Given contexts $\Delta, \Gamma \in \mathcal{C}$,
+    the morphism $\gamma : \Delta \to \Gamma$
+    represents a substitution of the variables in $\Gamma$
+    by terms that are well typed under the context $\Delta$.
+    As an example, if $\Gamma = x_1 : A_1, \dots, x_n : A_n$,
+    the morphism $\gamma = \ctxt{a_1, \dots, a_n}$ represents the substitution
+    $\_[x_1 \mapsto a_1]\dots[x_n \mapsto a_n]$,
+    where $\Delta \vdash a_1 : A_1, \dots, \Delta \vdash a_n : A_n[x_1 \mapsto a_1]\dots[x_{n-1} \mapsto a_{n-1}]$.
+    Applying a substitution to a term or a type, then, changes its typing context from $\Gamma$ to $\Delta$;
+    we'll see shortly how performing the substitution is defined.
+    \item The empty substitution $\ctxt{}_\Gamma : \Gamma \to \bullet$ performs no substitutions
+    and weakens the context into $\Gamma$.
+    \item Given a context $\Gamma$, the identity substitution $\id_\Gamma : \Gamma \to \Gamma$
+    performs the trivial substitutions $[x_i \mapsto x_i]$.
+    \item Given substitutions $\gamma : \Delta \to \Gamma, \delta : \Xi \to \Delta$,
+    their composition $\gamma \circ \delta : \Xi \to \Gamma$
+    performs first the substitutions in $\gamma$, followed by the substitutions in $\delta$.
+\end{itemize}
+
+\subsection{Types and Terms as a Contravariant Functor}
+
+To understand the structure of $T$, we first need the definition of the category of families.
+
+\begin{definition}[Category \cat{Fam}]\label{def:fam} \leavevmode
+\begin{itemize}
+    \item The objects of \cat{Fam} are families of sets $\set{U_x}_{x \in X}$.
+    In type theory, we would write a dependent pair $\Pair{x}{X}{U_x}$,
+    where $X : \Set, U : X \to \Set$.
+    \item The morphisms of \cat{Fam} from $\set{U_x}_{x \in X}$ to $\set{V_y}_{y \in Y}$
+    are pairs of a function $f : X \to Y$ and a family of functions $(g_x)_{x \in X}$
+    where $g_x : U_x \to V_{f(x)}$.
+    In type theory, we would write a dependent pair
+    $\Pair{f}{X \to Y}{(\Fun{x}{X}{U_x \to V_{f(x)}})}$.
+    We recover the function $\Pair{x}{X}{U_x} \to \Pair{y}{Y}{V_y}$
+    using the above functions $f$ and $g$ given the pair $(x, u)$
+    by constructing the pair $(f(x), g_x(u))$.
+    \item The identity morphisms for $\set{U_x}_{x \in X}$ are pairs of identity functions,
+    \ie $(\fun{x}{x}, \fun{x}{\fun{u}{u}})$.
+    \item The composition of two morphisms of $\cat{Fam}$ $(f_2, g_2) \circ (f_1, g_1)$
+    are pairs of the function compositions, \ie $(\fun{x}{f_2(f_1(x))}, \fun{x}{\fun{u}{g_{2, f_1(x)}(g_{1, x}(u))}})$.
+\end{itemize}
+\end{definition}
+
+\begin{exercise}
+Verify that the left and right identity laws hold for $\cat{Fam}$.
+\end{exercise}
+
+We can now dissect what $T$ consists of.
+
+\begin{itemize}
+    \item $T$ maps contexts $\Gamma \in \mathcal{C}$ to a set $\Ty_{\mathcal{C}}(\Gamma)$,
+    representing well-formed types under $\Gamma$,
+    indexing over a set $\Tm_{\mathcal{C}}(\Gamma, A)$,
+    representing well-typed terms of type $A \in \Ty_{\mathcal{C}}(\Gamma)$.
+    I omit the subscript $_{\mathcal{C}}$ when the category of contexts is clear from context.
+    In short, $T(\Gamma)$ is the family $\set{\Tm(\Gamma, A)}_{A \in \Ty(\Gamma)}$.
+    Alternatively, we can view these as functions
+    $\Ty : \mathcal{C} \to \Set$ and
+    $\Tm : \Fun{\Gamma}{\mathcal{C}}{\Ty(\Gamma) \to \Set}$.
+    \item $T$ maps substitutions $\gamma : \Delta \to \Gamma$
+    to morphisms $T(\gamma) : T(\Gamma) \to T(\Delta)$;
+    $T$ is a \emph{contravariant} functor, so $\Delta$ and $\Gamma$ are swapped.
+    ($\op{\mathcal{C}}$ is merely notation for the contravariance of $T$,
+    and we aren't actually considering the meaning of the dual category of $\mathcal{C}$.)
+    By \cref{def:fam}, $T(\gamma)$ consists of a pair of a function $\_[\gamma] : \Ty(\Gamma) \to \Ty(\Delta)$
+    and a family of functions $\set{\_[\gamma]}_{A \in \Ty(\Gamma)}$ where
+    $\_[\gamma] : \Tm(\Gamma, A) \to \Tm(\Delta, A[\gamma])$,
+    omitting the subscript $A$ and using the same notation for both functions
+    since it should be clear from context whether it acts on a type or a term.
+    These represent applying substitutions to types under $\Gamma$
+    and to terms of type $A$ under $\Gamma$.
+    In short, given $A \in \Ty(\Gamma)$ and $a \in \Tm(\Gamma, A)$,
+    we have $\Delta \vdash a[\gamma] : A[\gamma]$.
+\end{itemize}
+
+Note that we aren't \emph{defining} a particular functor $T$,
+merely describing what such a functor means,
+and defining new notation $\Ty, \Tm, \_[\_], \_[\_]$ for its components.
+
+\begin{exercise}
+State the functor laws for the (contravariant) functorial action of $T$ on the composition of substitutions,
+one for types and one for terms.
+Does it make sense which substitution is performed first?
+\end{exercise}
+
+\subsection{Context Comprehensions}
+
+Consider the following contravariant functor $\op{\mathcal{C}} \to \cat{Fam}$, defined for some $\Gamma \in \mathcal{C}$ and $A \in \Ty(\Gamma, A)$.
+(This functor seems to go unnamed in the literature; I will call it the comprehension functor over $\Gamma$ and $A$,
+and name it $S_{\Gamma, A}$.)
+
+\begin{definition}[Comprehension functor $S_{\Gamma, A}$] \leavevmode
+\begin{itemize}
+    \item $S_{\Gamma, A}$ maps contexts $\Delta \in \mathcal{C}$ to the family $\set{\Tm(\Delta, A[\gamma])}_{\gamma : \Delta \to \Gamma}$.
+    In type theory, we would write $S_{\Gamma, A}(\Delta) \triangleq \Pair{\gamma}{\Delta \to \Gamma}{\Tm(\Delta, A[\gamma])}$.
+    \item Given $\Xi, \Delta \in \mathcal{C}$, $S_{\Gamma, A}$ maps substitutions $\delta : \Xi \to \Delta$
+    to a pair of a function $(\Delta \to \Gamma) \to (\Xi \to \Gamma)$
+    defined by $S_{\Gamma, A}(\delta)(\gamma) \triangleq \gamma \circ \delta$
+    and a family of functions over $\gamma : \Delta \to \Gamma$ in $\Tm(\Delta, A[\gamma]) \to \Tm(\Xi, A[\gamma \circ \delta])$ defined by $S_{\Gamma, A}(\delta)(\gamma)(a) \triangleq a[\delta]$.
+    In type theory, we would write $S_{\Gamma, A}(\delta)(\gamma, a) \triangleq (\gamma \circ \delta, a[\delta])$.
+\end{itemize}
+\end{definition}
+
+This definition is a little convoluted, but we won't need it for much longer after we define and work only with the unrolled definition of a context comprehension.
+But first, we need the notion of a representable (contravariant) functor into $\cat{Fam}$.
+
+\begin{definition}[Representability and universal element]
+Let $F : \op{\mathcal{C}} \to \cat{Fam}$ be a contravariant functor.
+It is said to be \emph{representable} if it has a \emph{universal element}
+$(A, a) \in \Pair{A}{\mathcal{C}}{F(A)}$, meaning that
+for any other $(B, b) \in \Pair{B}{\mathcal{C}}{F(B)}$,
+there is a unique morphism $f : B \to A$
+such that $F(f)(a) = b$.
+(Of course, $a$ and $b$ are pairs of elements in the families $F(A)$ and $F(B)$, respectively,
+so that $F(f)$ is a pair of functions mapping the components of $a$ to the components of $b$.)
+\end{definition}
+
+In our definition of a CwF, we require that $S_{\Gamma, A}$ be representable.
+The context comprehension of $\Gamma$ and $A$ is defined as its universal element.
+
+\begin{definition}[Context comprehension]
+The context comprehension of $\Gamma \in \mathcal{C}$ and $A \in \Ty(\Gamma)$
+is the universal element of $S_{\Gamma, A}$,
+which consists of the tuple of a context $\Gamma \rhd A \in \mathcal{C}$,
+a substitution $\p_{\Gamma, A} : \Gamma \rhd A \to \Gamma$,
+and a term $\q_{\Gamma, A} \in \Tm(\Gamma \rhd A, A[\p_{\Gamma, A}])$.
+Given any other tuple $(\Delta, \gamma, a) \in \Pair{\Delta}{\mathcal{C}}{\Pair{\gamma}{\Delta \to \Gamma}{\Tm(\Delta, A[\gamma])}}$,
+there is a unique substitution $\ctxt{\gamma, a} : \Delta \to \Gamma \rhd A$
+such that $S_{\Gamma, A}(\ctxt{\gamma, a})(\p_{\Gamma, A}, \q_{\Gamma, A}) = (\gamma, a)$,
+\ie $\p_{\Gamma, A} \circ \ctxt{\gamma, a} = \gamma$ and $\q_{\Gamma, A}[\ctxt{\gamma, a}] = a$.
+\end{definition}
+
+Given a substitution $\gamma : \Delta \to \Gamma$,
+substitution the variables in $\Gamma$,
+the extended substitution $\ctxt{\gamma, a}$ substitutes on top of that an additional variable of type $A$
+in the extended context $\Gamma \rhd A$,
+with $\p_{\Gamma, A}$ as the first projection yielding the prior projections and $\q_{\Gamma, A}$ as the second projection yielding the new substitution term $a$.
+The context and type subscripts of $\p$ and $\q$ may be omitted if they can be deduced from context.
+
+\subsubsection{Uniqueness properties}
+
+We also have the following properties:
+
+\begin{lemma} \label{lem:pq}
+Let $\Gamma \in \mathcal{C}$ and $A \in \Ty(\Gamma)$.
+Then $\ctxt{\p_{\Gamma, A}, \q_{\Gamma, A}} = \id_{\Gamma \rhd A}$.
+\end{lemma}
+
+\begin{proof}
+We have $\p_{\Gamma, A} \circ \id_{\Gamma \rhd A} = \p_{\Gamma, A}$ by right identity and
+$\q_{\Gamma, A}[\id_{\Gamma \rhd A}] = \q_{\Gamma, A}$ by functoriality on identity,
+so the substitutions must be equal by uniqueness.
+\end{proof}
+
+\begin{lemma} \label{lem:comp-comp}
+Let $\Xi, \Delta, \Gamma \in \mathcal{C}$, $\gamma : \Delta \to \Gamma$, $\delta : \Xi \to \Delta$, $A \in \Ty(\Gamma)$, and $a \in \Tm(\Gamma, A)$.
+Then $\ctxt{\gamma, a} \circ \delta = \ctxt{\gamma \circ \delta, a[\delta]}$.
+\end{lemma}
+
+\begin{proof} 
+We have $\p_{\Gamma, A} \circ (\ctxt{\gamma, a} \circ \delta) = (\p_{\Gamma, A} \circ \ctxt{\gamma, a}) \circ \delta = \gamma \circ \delta$
+and $\q_{\Gamma, A}[\ctxt{\gamma, a} \circ \delta] = \q_{\Gamma, A}[\ctxt{\gamma, a}][\delta] = a[\delta]$,
+so the substitutions must be equal by uniqueness.
+\end{proof}
+
+In fact, \cref{lem:pq,lem:comp-comp} are sufficient to derive uniqueness of the comprehension substitution.
+
+\begin{lemma}
+Let $\Delta, \Gamma \in \mathcal{C}$, $\gamma : \Delta \to \Gamma$,
+$A \in \Ty(\Gamma)$, and $a \in \Tm(\Delta, A[\gamma])$,
+so that $\ctxt{\gamma, a} : \Delta \to \Gamma \rhd A$.
+Suppose there were another substitution $\delta : \Delta \to \Gamma \rhd A$
+such that $p_{\Gamma, A} \circ \delta = \gamma$
+and $q_{\Gamma, A}[\delta] = a$.
+Then it must be that $\delta = \ctxt{\gamma, a}$.
+\end{lemma}
+
+\begin{proof}
+Consider $\ctxt{\gamma, a} = \ctxt{p_{\Gamma, A} \circ \delta, q_{\Gamma, A}[\delta]}$.
+By \cref{lem:comp-comp}, this is equal to $\ctxt{p_{\Gamma, A}, q_{\Gamma, A}} \circ \delta$.
+By \cref{lem:pq}, this is equal to $\id_{\Gamma \rhd A} \circ \delta$.
+Finally, by left identity, this is equal to $\delta$.
+\end{proof}
+
+A context comprehension can then be specified by the context extension operator $\_\rhd\_$,
+the substitution extension operator $\ctxt{\_, \_}$,
+the projections $\p$ and $\q$,
+and \cref{lem:pq,lem:comp-comp} as properties rather than lemmas in place of uniqueness.
+
+\subsubsection{Projection and lifting, weakening and substitution}
+
+Alone, the term $\q_{\Gamma, A}$ represents the newest variable in $\Gamma \rhd A$,
+or the 0th de Bruijn index.
+Notice that $\p_{\Gamma, A}$ is also a weakening substitution,
+since the substitution $\_[\p_{\Gamma, A}]$ turns types and terms in $\Gamma$
+into ones in $\Gamma \rhd A$.
+To get the $i$th de Bruijn index of type $A_i$ in some context $\Gamma' = \Gamma \rhd A_i \rhd \dots A_0$, then,
+we use $\q_{\Gamma, A_i}$ followed by weakening the context by $A_{i - 1}, \dots, A_0$, yielding
+\begin{align*}
+    \q_{\Gamma, A_i}[\vec{\p}_{\Gamma', i}] &\in \Tm(\Gamma \rhd A_i \rhd \dots \rhd A_0, A_i[\p_{\Gamma, A_i} \circ \vec{\p}_{\Gamma', i}]), \textrm{where} \\
+    \vec{\p}_{\Gamma', i} &\triangleq \p_{\Gamma \rhd A_i, A_{i-1}} \circ \dots \circ \p_{\Gamma \rhd A_i \rhd \dots \rhd A_1, A_0}.
+\end{align*}
+
+\begin{definition}[Context projection]
+Given a context $\Gamma \in \mathcal{C}$ and
+types $A_i \in \Ty(\Gamma), \dots, A_0 \in \Ty(\Gamma \rhd A_i \rhd \dots \rhd A_1)$,
+we define the $i$th projection of $\Gamma' = \Gamma \rhd A_i \rhd \dots \rhd A_0$
+as $$\pi_{\Gamma', i} \triangleq q_{\Gamma, A_i}[\vec{\p}_{\Gamma', i}] \in \Tm(\Gamma', A_i[\p_{\Gamma, A_i} \circ \vec{\p}_{\Gamma', i}]),$$
+where $\vec{p}_{\Gamma', i}$ is defined as above.
+\end{definition}
+
+Given a substitution $\gamma : \Delta \to \Gamma$, we can also \emph{lift} the substitution to substitute over the extended context $\Gamma \rhd A$.
+
+\begin{definition}[Lifting]
+Given substitution $\gamma : \Delta \to \Gamma$ and a type $A \in \Ty(\Gamma)$, we define lifting $\gamma$ by $A$ as
+$$\gamma \uparrow A \triangleq \ctxt{\gamma \circ \p_{\Delta, A[\gamma]}, \q_{\Delta, A[\gamma]}} : \Delta \rhd A[\gamma] \to \Gamma \rhd A.$$
+\end{definition}
+
+If we lift $\p_{\Gamma, A} \uparrow A_i$, we obtain a substitution in $\Gamma \rhd A \rhd A_i[\p_{\Gamma, A}] \to \Gamma \rhd A_i$,
+which weakens the context by $A$ in between $\Gamma$ and $A_i$.
+By chaining a sequence of lifts by $A_i, \dots, A_0$,
+we then obtain a substitution that weakens $\Gamma'$ by $A$ in the middle of the context.
+Informally, in type theory, this is weakening some context $\Gamma, \Delta$ to $\Gamma, x:A, \Delta$
+for some fresh variable $x$.
+
+\begin{definition}[Context weakening]
+Given a context $\Gamma \in \mathcal{C}$ and types $A, A_i \in \Ty(\Gamma), A_{i-1} \in \Ty(\Gamma \rhd A_i), \dots, A_0 \in \Ty(\Gamma \rhd A_i \rhd \dots \rhd A_1)$,
+we define weakening $\Gamma' = \Gamma \rhd A_i \rhd \dots \rhd A_0$ by $A$ as the substitution
+\begin{align*}
+    \wk_{\Gamma', i}(A) &\triangleq \p_{\Gamma, A} \uparrow A_i \uparrow \dots \uparrow A_0 \\
+    &: \Gamma \rhd A \rhd A_i[\p_{\Gamma, A}] \rhd \dots \rhd A_0[\p_{\Gamma, A} \uparrow A_i \uparrow \dots \uparrow A_1] \to \Gamma'.
+\end{align*}
+\end{definition}
+
+In the opposite direction, we have context substitution:
+informally in type theory, given some context $\Gamma, x:A, \Delta$ and a term $\Gamma \vdash a : A_i$,
+we yield the context $\Gamma, \Delta[x \mapsto a]$.
+Given a term $a \in \Ty(\Gamma, A_i)$, this is achieved by lifting the identity substitution extended by $a$.
+Lifting once by $A_{i-1}$ yields the substitution
+$\ctxt{\id_{\Gamma}, a} \uparrow A_{i-1} : \Gamma \rhd A_{i-1}[\ctxt{\id_{\Gamma}, a}] \to \Gamma \rhd A_i \rhd A_{i-1}$.
+
+\begin{definition}[Context substitution]
+Given a context $\Gamma \in \mathcal{C}$, types $A_i \in \Ty(\Gamma), \dots, A_0 \in Ty(\Gamma \rhd A_i \rhd \dots \rhd A_1)$,
+and a term $a \in \Tm(\Gamma, A_i)$, we define substitution in $\Gamma' = \Gamma \rhd A_i \rhd \dots \rhd A_0$
+by $a$ as the substitution
+\begin{align*}
+    \sb_{\Gamma', i}(a) &\triangleq \ctxt{\id_{\Gamma}, a} \uparrow A_{i-1} \uparrow \dots \uparrow A_0 \\
+    &: \Gamma \rhd A_{i-1}[\ctxt{\id_{\Gamma}, a}] \rhd \dots \rhd A_0[\ctxt{\id_{\Gamma}, a} \uparrow A_{i-1} \uparrow \dots \uparrow A_1]
+    \to \Gamma'.
+\end{align*}
+\end{definition}
+
+\begin{exercise}
+Consider $\Gamma \rhd A_i \rhd \dots \rhd A_0 \in \mathcal{C}$, $A \in \Ty(\Gamma)$, and $a \in \Tm(\Gamma, A)$.
+What is the type of the substitution $\sb_{i+1}(a) \circ \wk_i(A)$?
+What does it do?
+\end{exercise}
+
+\subsection{CwFs as a Generalized Algebraic Theory} \label{sec:cwf-gat}
+
+Although working through the structure of what a CwF is requires a lot of machinery,
+ultimately only the unrolled definitions are needed for now;
+we don't really need to know that $T$ is a contravariant functor or that comprehensions are universal elements.
+All we need to know are the types of the various objects and morphisms we have,
+along with the equations that they satisfy,
+making the signature of a CwF an algebraic theory,
+but since later definitions and equations can depend on earlier ones, these form a GAT.
+A CwF can then be described as consisting of:
+
+\begin{itemize}
+    \item A collection $\mathcal{C}$ of contexts;
+    \item For contexts $\Delta, \Gamma : \mathcal{C}$ a collection of substitutions $\Delta \to \Gamma$;
+    \item For contexts $\Xi, \Delta, \Gamma : \mathcal{C}$ and substitutions $\gamma : \Delta \to \Gamma$, $\delta : \Xi \to \Delta$ a notion of their composition $\gamma \circ \delta : \Xi \to \Gamma$;
+    \item For a context $\Gamma : \mathcal{C}$ an identity substitution $\id_{\Gamma} : \Gamma \to \Gamma$;
+    \item An empty context $\bullet : \mathcal{C}$;
+    \item For a context $\Gamma : \mathcal{C}$ an empty substitution $\ctxt{} : \Gamma \to \bullet$;
+    \item For a context $\Gamma : \mathcal{C}$ a collection of types $\Ty(\Gamma)$ under $\Gamma$;
+    \item For a context $\Gamma : \mathcal{C}$ and a type $A : \Ty(\Gamma)$ a collection of terms $\Tm(\Gamma, A)$ under $\Gamma$ of type $A$;
+    \item For contexts $\Delta, \Gamma : \mathcal{C}$ and a substitution $\gamma : \Delta \to \Gamma$ a substitution function $\_[\gamma] : \Ty(\Gamma) \to \Ty(\Delta)$ on types;
+    \item For contexts $\Delta, \Gamma : \mathcal{C}$, a substitution $\gamma : \Delta \to \Gamma$, and a type $A : \Ty(\Gamma)$, a substitution function $\_[\gamma] : \Tm(\Gamma, A) \to \Ty(\Delta, A[\gamma])$ on terms;
+    \item For a context $\Gamma$ and a type $A : \Ty(\Gamma)$ a context extension operator $\Gamma \rhd A : \mathcal{C}$;
+    \item For contexts $\Delta, \Gamma$, a substitution $\gamma : \Delta \to \Gamma$,
+    a type $A : \Ty(\Gamma)$, and a term $a : \Tm(\Delta, A[\gamma])$,
+    a substitution extension operator $\ctxt{\gamma, a} : \Delta \to \Gamma \rhd A$;
+    \item For a context $\Gamma$ and a type $A : \Ty(\Gamma)$ a substitution $\p_{\Gamma, A} : \Gamma \rhd A \to \Gamma$; and
+    \item For a context $\Gamma$ and a type $A : \Ty(\Gamma)$ a term $\q_{\Gamma, A} : \Tm(\Gamma \rhd A, A[\p_{\Gamma, A}])$,
+\end{itemize}
+
+Subject to the following properties:
+
+\begin{itemize}
+    \item Substitution composition is associative;
+    \item Identity substitutions are left and right identities with respect to substitution;
+    \item Empty substitutions are unique;
+    \item The substitution function over an identity substitution is the identity function (on both types and terms);
+    \item The substitution function over a composition of substitutions is the composition
+    of the substitution functions over each substitution (on both types and terms);
+    \item $\p$ composed with an extended substitution projects out the original substitution;
+    \item The substitution function over an extended substitution applied to $\q$ projects out the extension term;
+    \item The substitution $\p$ extended by the term $\q$ yields the identity substitution; and
+    \item An extended substitution composed with a second substitution is equal to
+    the original substitution composed with the second substitution extended by the substitution function over the second substitution applied to the original extension term.
+\end{itemize}
+
+The properties that must be satisfied, especially the uniqueness ones,
+become a little heavy when written out as prose,
+but presenting a CwF as a GAT means that we can define it as an instance of a giant record type
+containing these structures and the equations as equalities.
+I use Agda syntax below to as an example of such a record type,
+but this will not type check in Agda:
+later types require that earlier equalities be either definitional
+or that coercions along earlier equalities be explicit.
+
+\setmonofont{iosevka.ttc}
+\begin{minted}{agda}
+record CwF {ℓ} : Set (suc ℓ) where
+  infixl 30 _▷_
+  infixl 40 _[_]
+  field
+    -- Category with terminal element
+    C    : Set ℓ
+    _⇒_ : C → C → Set ℓ
+    id   : ∀ {Γ} → Γ ⇒ Γ
+    _∘_  : ∀ {Ξ Δ Γ} → (Δ ⇒ Γ) → (Ξ ⇒ Δ) → (Ξ ⇒ Γ)
+    ∙    : C
+    ⟨⟩   : ∀ {Γ} → Γ ⇒ ∙
+
+    -- Category laws and terminality
+    ass : ∀ {Θ Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {ε : Θ ⇒ Ξ} →
+          (γ ∘ δ) ∘ ε ≡ γ ∘ (δ ∘ ε)
+    idl : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → id ∘ γ ≡ γ
+    idr : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → γ ∘ id ≡ γ
+    ⟨⟩η : ∀ {Γ} {γ : Γ ⇒ ∙} → γ ≡ ⟨⟩
+
+    -- Type functor and functor laws
+    Ty   : C → Set ℓ
+    _[_] : ∀ {Δ Γ} → Ty Γ → (Δ ⇒ Γ) → Ty Δ
+    [id] : ∀ {Γ} {A : Ty Γ} → A [ id ] ≡ A
+    [∘]  : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} →
+           A [ γ ∘ δ ] ≡ A [ γ ] [ δ ]
+
+    -- Term functor and functor laws
+    Tm   : ∀ Γ → Ty Γ → Set ℓ
+    _⟮_⟯ : ∀ {Δ Γ} {A : Ty Γ} → Tm Γ A → (γ : Δ ⇒ Γ) → Tm Δ (A [ γ ])
+    ⟮id⟯ : ∀ {Γ} {A : Ty Γ} {a : Tm Γ A} → a ⟮ id ⟯ ≡ a
+    ⟮∘⟯  : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} {a : Tm Γ A} →
+           a ⟮ γ ∘ δ ⟯ ≡ a ⟮ γ ⟯ ⟮ δ ⟯
+
+    -- Context comprehension
+    _▷_  : ∀ Γ → Ty Γ → C
+    ⟨_,_⟩ : ∀ {Δ Γ} {A : Ty Γ} → (γ : Δ ⇒ Γ) → Tm Δ (A [ γ ]) → (Δ ⇒ Γ ▷ A)
+    p     : ∀ {Γ} {A : Ty Γ} → (Γ ▷ A ⇒ Γ)
+    q     : ∀ {Γ} {A : Ty Γ} → Tm (Γ ▷ A) (A [ p ])
+
+    -- Context comprehension laws
+    pβ   : ∀ {Δ Γ} {A : Ty Γ} {γ : Δ ⇒ Γ} {a : Tm Δ (A [ γ ])} →
+           p ∘ ⟨ γ , a ⟩ ≡ γ
+    qβ   : ∀ {Δ Γ} {A : Ty Γ} {γ : Δ ⇒ Γ} {a : Tm Δ (A [ γ ])} →
+           q ⟮ ⟨ γ , a ⟩ ⟯ ≡ a
+    ⟨pq⟩ : ∀ {Γ} {A : Ty Γ} → ⟨ p , q ⟩ ≡ id {Γ ▷ A}
+    ⟨⟩∘  : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} {a : Tm Δ (A [ γ ])} →
+           ⟨ γ , a ⟩ ∘ δ ≡ ⟨ γ ∘ δ , a ⟮ δ ⟯ ⟩
+\end{minted}
+
+\begin{exercise}
+The types of {\codefont ⟮id⟯}, {\codefont ⟮∘⟯}, {\codefont qβ}, and {\codefont ⟨⟩∘}
+don't type check in Agda.
+Which prior equalities in the record would need to be definitional for type checking to succeed?
+Add transports across these equalities to their types so that they \emph{do} type check in Agda.
+\end{exercise}
+
+\subsection{Supporting More Structures}
+
+Currently, the only CwF possible is trivial,
+since the only context that exists is the empty context,
+and there are no types or terms at all.
+For a minimally useful type theory, we may want at the very least an empty type and dependent function types,
+perhaps along with a single type universe.
+We therefore augment CwFs by adding more types, terms, and equations to support these structures.
+In general, there needs to be an element in $\Ty$ for each type former,
+elements in $\Tm$ for its introduction and elimination forms,
+equations reflecting their computation and uniqueness rules (if any),
+and equations describing the behaviour of applying substitutions to the types and terms.
+
+\begin{definition}[$\bot$-structure]
+A CwF supports a $\bot$-structure if for any context $\Gamma \in \mathcal{C}$,
+\begin{itemize}
+    \item There is a type $\Empty \in \Ty(\Gamma)$; and
+    \item Given $A \in \Ty(\Gamma)$ and $a \in \Tm(\Gamma, \Empty)$
+    there is a term $\Absurd(A, a) \in \Tm(\Gamma, A)$,
+\end{itemize}
+such that given a substitution $\gamma : \Delta \to \Gamma$,
+\begin{itemize}
+    \item $\Empty[\gamma] = \Empty \in \Ty(\Delta)$; and
+    \item $\Absurd(A, a)[\gamma] = \Absurd(A[\gamma], a[\gamma]) \in \Tm(\Delta, A[\gamma])$.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[$\Pi$-structures]
+A CwF supports a $\Pi$-structure if for any context $\Gamma \in \mathcal{C}$,
+\begin{itemize}
+    \item Given $A \in \Ty(\Gamma)$ and $B \in \Ty(\Gamma \rhd A)$
+    there is a type $\pitype(A, B) \in \Ty(\Gamma)$;
+    \item Given $b \in \Tm(\Gamma \rhd A, B)$
+    there is a term $\lam(b) \in \Tm(\Gamma, \pitype(A, B))$; and
+    \item Given $a \in \Tm(\Gamma, \pitype(A, B))$
+    there is a term $\app(a) \in \Tm(\Gamma \rhd A, B)$,
+\end{itemize}
+such that for terms $a \in \Tm(\Gamma, \pitype(A, B))$ and $b \in \Tm(\Gamma \rhd A, B)$,
+\begin{itemize}
+    \item $\app(\lam(b)) = b$; and
+    \item $\lam(\app(a)) = a$,
+\end{itemize}
+and given a substitution $\gamma : \Delta \to \Gamma$,
+\begin{itemize}
+    \item $\pitype(A, B)[\gamma] = \pitype(A[\gamma], B[\gamma \uparrow A]) \in \Ty(\Delta)$;
+    \item $\lam(b)[\gamma] = \lam(b[\gamma \uparrow A]) \in \Tm(\Delta, \Pi(A[\gamma], B[\gamma \uparrow A]))$; and
+    \item $\app(a)[\gamma \uparrow A] = \app(a[\gamma]) \in \Tm(\Delta \rhd A[\gamma], B[\gamma \uparrow A])$.
+\end{itemize}
+\end{definition}
+
+Note that this formulation of application is the inverse of a function abstraction
+rather than the more familiar formulation of application of a function to an argument.
+As a typing rule, it would look like the following:
+%
+\begin{mathpar}
+\infer{\Gamma \vdash b : \Pi A.B}{\Gamma, x: A \vdash b\,x : B}
+\end{mathpar}
+%
+To obtain the usual notion of application,
+we apply a substitution that substitutes $x$ by the argument,
+leaving the remaining variables unchanged.
+
+\begin{definition}[Argument application]
+Given a context $\Gamma \in \mathcal{C}$, types $A \in \Ty(\Gamma)$ and $B \in \Ty(\Gamma \rhd A)$,
+and terms $b \in \Tm(\Gamma, \pitype(A, B))$ and $a \in \Tm(\Gamma, A)$, we define
+$$b \mathbin{@} a \triangleq \app(b)[\ctxt{\id_{\Gamma}, a}] \in \Tm(\Gamma, B[\ctxt{\id_{\Gamma}, a}])$$
+\end{definition}
+
+\begin{definition}[$U$-structure]
+A CwF supports a $U$-structure if for any context $\Gamma \in \mathcal{C}$,
+\begin{itemize}
+    \item There is a type $\univ \in \Ty(\Gamma)$;
+    %\item Given $A \in \Ty(\Gamma)$ there is term $\code(A) \in \Tm(\Gamma, \univ)$; and
+    \item Given $a \in \Tm(\Gamma, \univ)$ there is a type $\El(a) \in \Ty(\Gamma)$,
+    \item There is a term $\code{\Empty} \in \Tm(\Gamma, \univ)$; and
+    \item Given $A \in \Tm(\Gamma, \univ)$ and $B \in \Tm(\Gamma \rhd \El(A), \univ)$ there is a term $\code{\pitype}(A, B) \in \Tm(\Gamma, \univ)$,
+\end{itemize}
+such that for terms $A \in \Tm(\Gamma, \univ)$, $B \in \Tm(\Gamma \rhd \El(A), \univ)$,
+\begin{itemize}
+    \item $\El(\code{\Empty}) = \Empty$; and
+    \item $\El(\code{\pitype}(A, B)) = \pitype(\El(A), \El(B))$,
+\end{itemize}
+and given a substitution $\gamma : \Delta \to \Gamma$,
+\begin{itemize}
+    \item $\univ[\gamma] = \univ \in \Ty(\Delta)$;
+    \item $\El(a)[\gamma] = \El(a[\gamma]) \in \Ty(\Delta)$;
+    \item $\code{\Empty}[\gamma] = \code{\Empty} \in \Tm(\Delta, \univ)$; and
+    \item $\code{\pitype}(A, B)[\gamma] = \code{\pitype}(A[\gamma], B[\gamma]) \in \Tm(\Delta, \univ)$.
+\end{itemize}
+\end{definition}
+
+Normally, with a hierarchy of universes,
+rather than explicitly defining a code for each type individually,
+given an arbitrary type $A \in \Ty_{\ell}(\Gamma)$,
+there is a term $\mathrm{code}(A) \in \Tm(\Gamma, \univ_{\ell})$
+such that $\El(\mathrm{code}(A)) = A$,
+and dually given a term $a \in \Tm(\Gamma, \univ_{\ell})$
+we have $\mathrm{code}(\El(a)) = a$.
+Predicativity then arises from $\univ_{\ell} \in \Ty_{\ell + 1}(\Gamma)$.
+However, since there is only one universe and $\univ$ itself is a type,
+we would then have $\mathrm{code}(\univ) \in \Tm(\Gamma, \univ)$,
+resulting in inconsistencies due to type-in-type.
+Rather than $\univ$ not being a type (which would defeat the purpose of a $U$-structure!),
+we simply don't define a code for it: there is no $\code{\univ}$.
+
+\begin{exercise}
+Define a $\bot$-structure for the empty type,
+a $\bool$-structure for booleans, and
+$\Sigma$-structures for dependent pairs.
+\end{exercise}
+
+Once again, these can be presented as extensions to the GAT for a CwF,
+written as fields of functions into types, terms, and equalities in the record type.
+For convenience, here I use Agda's syntax for extending record types,
+but again, some types won't type check because the required equalities aren't definitional,
+such as those for {\codefont abs⟮⟯}, {\codefont lam⟮⟯}, and {\codefont code⟮⟯}.
+
+\begin{minted}{agda}
+open CwF {{...}}
+
+_↑_ : ∀ {ℓ} {{cwf : CwF {ℓ}}} {Δ Γ : C} →
+       (γ : Δ ⇒ Γ) → (A : Ty Γ) → (Δ ▷ A [ γ ] ⇒ Γ ▷ A)
+γ ↑ A = ⟨ γ ∘ p , q ⟩
+
+record Structures {ℓ} : Set (suc ℓ) where
+  field
+    {{cwf}} : CwF {ℓ}
+
+    -- ⊥-structure
+    ⊥     : ∀ {Γ} → Ty Γ
+    abs   : ∀ {Γ} → (A : Ty Γ) → Tm Γ ⊥ → Tm Γ A
+    ⊥[]   : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → ⊥ [ γ ] ≡ ⊥
+    abs⟮⟯ : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → {A : Ty Γ} → {a : Tm Γ ⊥} →
+            (abs A a) ⟮ γ ⟯ ≡ abs (A [ γ ]) (a ⟮ γ ⟯)
+
+    -- Π-structure
+    Π     : ∀ {Γ} → (A : Ty Γ) → Ty (Γ ▷ A) → Ty Γ
+    lam   : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} →
+            Tm (Γ ▷ A) B → Tm Γ (Π A B)
+    app   : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} →
+            Tm Γ (Π A B) → Tm (Γ ▷ A) B
+    Πβ    : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {b : Tm (Γ ▷ A) B} →
+            app (lam b) ≡ b
+    Πη    : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {a : Tm Γ (Π A B)} →
+            lam (app a) ≡ a
+    Π[]   : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} →
+            (Π A B) [ γ ] ≡ Π (A [ γ ]) (B [ γ ↑ A ])
+    lam⟮⟯ : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} {b : Tm (Γ ▷ A) B} →
+            (lam b) ⟮ γ ⟯ ≡ lam (b ⟮ γ ↑ A ⟯)
+    app⟮⟯ : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} {a : Tm Γ (Π A B)} →
+            (app a) ⟮ γ ↑ A ⟯ ≡ app (a ⟮ γ ⟯)
+
+    -- U-structure
+    U      : ∀ {Γ} → Ty Γ
+    el     : ∀ {Γ} → Tm Γ U → Ty Γ
+    ⊥ᶜ     : ∀ {Γ} → Tm Γ U
+    Πᶜ     : ∀ {Γ} → (A : Tm Γ U) → Tm (Γ ▷ el A) U → Tm Γ U
+    ⊥ᶜβ    : ∀ {Γ} → el ⊥ᶜ ≡ ⊥
+    Πᶜβ    : ∀ {Γ} {A : Tm Γ U} {B : Tm (Γ ▷ el A) U} →
+             el (Πᶜ A B) ≡ Π (el A) (el B)
+    U[]    : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → U [ γ ] ≡ U
+    el[]   : ∀ {Δ Γ} {γ : Δ ⇒ Γ} {a : Tm Γ U} → (el a) [ γ ] ≡ el (a ⟮ γ ⟯)
+    ⊥ᶜ⟮⟯   : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → ⊥ᶜ ⟮ γ ⟯ ≡ ⊥ᶜ
+    Πᶜ⟮⟯   : ∀ {Δ Γ} {γ : Δ ⇒ Γ} {A : Tm Γ U} {B : Tm (Γ ▷ el A) U} →
+             (Πᶜ A B) ⟮ γ ⟯ ≡ Πᶜ (A ⟮ γ ⟯) (B ⟮ γ ↑ el A ⟯)
+\end{minted}
+
+\begin{exercise}
+{\codefont ↑}, {\codefont app⟮⟯}, and {\codefont el[]}
+also don't type check in Agda.
+Add coercions to {\codefont q} and {\codefont (a ⟮ γ ⟯)} across prior equalities to ensure that they do.
+\end{exercise}
+
+\section{Type Theories from CwFs}
+
+In the next section, we'll see that CwFs themselves form a category
+under some definition of morphisms between them.
+Following that, we construct a concrete type theory,
+which corresponds to the \emph{term model},
+along with an interpretation function for the syntax,
+which corresponds to a CwF morphism from the term model into arbitrary CwFs.
+Finally, we show that the interpretation is \emph{sound},
+implying that the term model is initial in the category of CwFs.
+
+The initiality of the term model acts like a reduction to \emph{any} model
+(that is, any CwF that supports the same structures),
+similar to how in computability theory one could reduce a problem $A$ to a problem $B$ that is,
+say, recursively enumerable, to show that $A$ is also recursively enumerable.
+If we wanted to show that a type theory is consistent, for example,
+this corresponds to there being a type $\bot \in \Ty(\bullet)$ such that $\Tm(\bullet, \bot)$ is empty,
+and it would suffice to provide another model in which this property is known to hold,
+since initiality should preserve this property.
+
+Of course, the difficulty lies in demonstrating that there \emph{is} another model with the desired properties,
+but the benefit is that once the structure of the CwFs is established,
+this step is separate from the syntax of the type theory and from showing its soundness.
+If another model, sometimes referred to as a \emph{semantic model}, has been found,
+we are free to make minor alterations to the particular presentation of the type theory,
+and only the proof of soundness will need to be repaired.
+
+\subsection{The Category of CwFs}
+
+A CwF can be succinctly described by a tuple
+$\mathfrak{C} = (\mathcal{C}, T_\mathcal{C}, \bullet_\mathcal{C}, \ctxt{}_\mathcal{C}, \_\rhd_\mathcal{C}\_, \ctxt{\_, \_}_\mathcal{C}, \p_\mathcal{C}, \q_\mathcal{C})$
+satisfying the equations listed in \cref{sec:cwf-gat}.
+Each component is labelled by the category $\mathcal{C}$ so they can be distinguished,
+but I will omit most of them except on $T$ and $\bullet$
+since the category can be inferred from various arguments and subscripts,
+and to avoid clashing with the subscripts themselves.
+Suppose we have another CwF
+$\mathfrak{D} = (\mathcal{D}, T_\mathcal{D}, \bullet_\mathcal{D}, \ctxt{}_\mathcal{D}, \_\rhd_\mathcal{D}\_, \ctxt{\_, \_}_\mathcal{D}, \p_\mathcal{D}, \q_\mathcal{D})$.
+
+\begin{definition}[CwF morphism] \label{def:cwf-morphism}
+A morphism between CwFs $\mathfrak{C}$ and $\mathfrak{D}$ consists of:
+\begin{itemize}
+    \item A functor $F : \mathcal{C} \to \mathcal{D}$; and
+    \item A natural transformation $\nt : T_\mathcal{C} \to T_\mathcal{D} \circ F$
+\end{itemize}
+such that the following hold (holding off on introducing $\nt_{\Gamma}$ and $\nt_{\Gamma, A}$ for the moment):
+\begin{itemize}
+    \item $F(\bullet_{\mathcal{C}}) = \bullet_{\mathcal{D}}$;
+    \item For every $\Gamma \in \mathcal{C}$, we have $F(\ctxt{}_{\Gamma}) = \ctxt{}_{F(\Gamma)}$;
+    \item For every $\Gamma \in \mathcal{C}, A \in \Ty_\mathcal{C}(\Gamma)$, we have
+    $F(\Gamma \rhd A) = F(\Gamma) \rhd \nt_\Gamma(A)$;
+    \item For every $\Delta, \Gamma \in \mathcal{C}, \gamma : \Delta \to \Gamma, A \in \Ty_\mathcal{C}(\Gamma), a \in \Tm_\mathcal{C}(\Delta, A[\gamma])$, we have
+    $F(\ctxt{\gamma, a}) = \ctxt{F(\gamma), \nt_{\Gamma, A}(a)}$;
+    \item For every $\Gamma \in \mathcal{C}, A \in \Ty_\mathcal{C}(\Gamma)$, we have
+    $F(\p_{\Gamma, A}) = \p_{F(\Gamma), \nt_{\Gamma}(A)}$; and
+    \item For every $\Gamma \in \mathcal{C}, A \in \Ty_\mathcal{C}(\Gamma)$, we have
+    $F(\q_{\Gamma, A}) = \q_{F(\Gamma), \nt_{\Gamma}(A)}$.
+\end{itemize}
+\end{definition}
+
+The natural transformation $\nt$ is a family of morphisms over $\mathcal{C}$;
+that is, given a context $\Gamma \in \mathcal{C}$, we have the morphism
+$\nt(\Gamma) : T_{\mathcal{C}}(\Gamma) \to T_{\mathcal{D}}(F(\Gamma))$.
+Given a substitution $\gamma : \Delta \to \Gamma$,
+naturality of $\nt$ makes the following square commute:
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    T_{\mathcal{C}}(\Gamma)
+        \arrow[r, rightarrow, "\nt(\Gamma)"]
+        \arrow[d, rightarrow, "T_{\mathcal{C}}(\gamma)"'] &
+    T_{\mathcal{D}}(F(\Gamma))
+        \arrow[d, rightarrow, "T_{\mathcal{D}}(F(\gamma))"] \\
+    T_{\mathcal{C}}(\Delta)
+        \arrow[r, rightarrow, "\nt(\Delta)"'] &
+    T_{\mathcal{D}}(F(\Delta))
+\end{tikzcd}
+\end{center}
+
+In other words, $\nt(\Delta) \circ T_{\mathcal{C}}(\gamma) = T_{\mathcal{D}}(F(\gamma)) \circ \nt(\Gamma)$.
+
+Recall, however, that $T$ is actually a pair of functors $\Ty$ and $\Tm$,
+so there are in fact two natural transformations where, given $\Gamma \in \mathcal{C}, A \in \Ty_{\mathcal{C}}(\Gamma)$,
+
+\begin{itemize}
+    \item $\nt_{\Gamma} : \Ty_{\mathcal{C}}(\Gamma) \to \Ty_{\mathcal{D}}(F(\Gamma))$, and
+    \item $\nt_{\Gamma, A} : \Tm_{\mathcal{C}}(\Gamma, A) \to \Tm_{\mathcal{D}}(F(\Gamma), \sigma_{\Gamma}(A))$.
+\end{itemize}
+
+Naturality then involves the type and term substitution functions in the following commuting squares:
+
+\begin{multicols}{2}
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \Ty_{\mathcal{C}}(\Gamma)
+        \arrow[r, rightarrow, "\nt_\Gamma"]
+        \arrow[d, rightarrow, "{\_[\gamma]}"'] &
+    \Ty_{\mathcal{D}}(F(\Gamma))
+        \arrow[d, rightarrow, "{\_[F(\gamma)]}"] \\
+    \Ty_{\mathcal{C}}(\Delta)
+        \arrow[r, rightarrow, "\nt_\Delta"'] &
+    \Ty_{\mathcal{D}}(F(\Delta))
+\end{tikzcd}
+\end{center}
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \Tm_{\mathcal{C}}(\Gamma, A)
+        \arrow[r, rightarrow, "\nt_{\Gamma, A}"]
+        \arrow[d, rightarrow, "{\_[\gamma]}"'] &
+    \Tm_{\mathcal{D}}(F(\Gamma), \nt_{\Gamma}(A))
+        \arrow[d, rightarrow, "{\_[F(\gamma)]}"] \\
+    \Tm_{\mathcal{C}}(\Delta, A[\gamma])
+        \arrow[r, rightarrow, "\nt_{\Gamma, A[\gamma]}"'] &
+    \begin{tabular}{l}
+    $\Tm_{\mathcal{D}}(F(\Delta), \nt_{\Gamma}(A)[F(\gamma)])$ \\
+    $\Tm_{\mathcal{D}}(F(\Delta), \nt_{\Delta}(A[\gamma]))$
+    \end{tabular}
+\end{tikzcd}
+\end{center}
+\end{multicols}
+
+Given $\Gamma \in \mathcal{C}, A \in \Ty_{\mathcal{C}}(\Gamma), a \in \Tm_{\mathcal{C}}(\Gamma, A)$,
+the naturality equations are $\nt_{\Delta}(A[\gamma]) = \nt_{\Gamma}(A)[F(\gamma)]$
+and $\nt_{\Gamma, A[\gamma]}(a[\gamma]) = \nt_{\Gamma, A}(a)[F(\gamma)]$;
+the first equation lets us write the bottom right corner of the second square in two different ways.
+In short, $\nt$ for types and terms preserves the notion of substitution across the functor,
+similar to how the equations listed in \cref{def:cwf-morphism} preserve all of the structure of a CwF
+\emph{on the nose}, as they say.
+
+\begin{exercise}
+Show that the naturality equations for $\nt_{\Gamma}$ and $\nt_{\Gamma, A}$
+follow from the naturality equation for $\nt$.
+\end{exercise}
+
+\begin{definition}[Category \cat{CwF}]
+The category of CwFs consists of CwFs as objects and CwF morphisms as morphisms.
+\end{definition}
+
+\begin{exercise}
+What are the identity morphisms of \cat{CwF}?
+\end{exercise}
+
+\subsection{A Simple Type Theory}
+
+There are different ways to proceed with defining the type theory such that the corresponding term model is initial.
+The traditional way is to define equality judgements for contexts, substitutions, types, and terms,
+define an interpretation function $\interp{\_}$ from each of these into an arbitrary CwF,
+show that the interpretation is sound and preserves equality,
+and lift the interpretation function to act on equivalence classes of contexts, substitutions, types, and terms
+with respect to their equality judgements,
+with the term model consisting of the equivalence classes.
+%
+\begin{mathpar}
+\fbox{$\vdash \Gamma = \Gamma$}
+\and
+\fbox{$\Delta \vdash \gamma = \gamma : \Gamma$}
+\and
+\fbox{$\Gamma \vdash A = A$}
+\and
+\fbox{$\Gamma \vdash a = a : A$}
+\end{mathpar}
+%
+This yields a type theory that uses explicit substitutions and de Bruijn indices,
+with $\vdash \Gamma$, $\Delta \vdash \gamma : \Gamma$, $\Gamma \vdash A$, and $\Gamma \vdash a : A$
+as sugar for the reflexive judgements.
+The closeness of the type theory to the signature of the CwF makes showing initiality easy,
+since it falls from the structure and the soundness of the interpretation.
+The interpretation of contexts and substitutions is the functor $F$,
+and the interpretation of types and terms is the natural transformation $\nt$;
+the required equations for a CwF morphism essentially define the interpretation,
+and soundness ensures the types all line up, since the interpretation is defined only on syntax,
+which may not be well formed or well typed. \citet{undeceq,gatcwf} detail this systematic procedure
+and provide examples of concrete syntactic models of various CwFs, not limited to type theories.
+
+However, most will begin with the typing judgements and derivation rules,
+and most type theories aren't shaped like the above.
+Typically substitution is implicit (\ie a metafunction rather than syntax),
+there is no notion of context equality,
+and equality judgements are separate from well-formedness and well-typedness ones.
+Many will also use variables and capture-avoiding substitution
+rather than de Bruijn indices.
+%
+\begin{mathpar}
+\fbox{$\vdash \Gamma$}
+\and
+\fbox{$\Gamma \vdash A$}
+\and
+\fbox{$\Gamma \vdash A = A$}
+\and
+\fbox{$\Gamma \vdash a : A$}
+\and
+\fbox{$\Gamma \vdash a = a : A$}
+\end{mathpar}
+%
+There are two options to rigourously show that the second presentation of the syntax corresponds to an initial term model:
+\begin{enumerate}
+    \item Show that the first presentation's term model is initial, as usual,
+    then show that the second presentation is equivalent to the first.
+    \item Directly construct a term model and its interpretation for the second presentation
+    and show initiality from scratch.
+\end{enumerate}
+
+The latter appears to be the most common strategy.
+However, the term model is often never explicitly stated,
+usually only the interpretation for the syntax (and not their equivalence classes)
+or for the derivation trees is given,
+and the soundness theorem is often stated without detailed proof.
+Quickly surveying a few works that use CwF for their semantics,
+\citet{synsem} defines the interpretation over syntax and states the soundness theorem
+with additional lemmas and hints for its proof;
+\citet{mdtt} defines both the interpretation over derivations and the term model while explicitly proving soundness of the interpretation for relevant cases;
+\citet{exteq} defines the interpretation over syntax and states the soundness theorem in an appendix;
+\citet{contextual} defines the interpretation over derivations and states the soundness theorem;
+\citet{qtt} defines a CwF with additional structures and states the soundness theorem for an interpretation over syntax that isn't fully explicitly defined; and
+\citet{relparam} defines a CwF with additional structures with no interpretation function.
+The consensus appears to be that at the very least, the interpretation function should be given
+and its corresponding soundness theorem stated,
+with novel proof cases explicit if they are tricky or notable.
+
+In \cref{fig:tt}, I define the derivation rules for the type theory corresponding to our CwF with structures
+in the second, more conventional presentation.
+Following the above past work,
+in the upcoming section I define the interpretation function and state the soundness theorem,
+but do not prove the theorem nor explicitly construct the term model
+or the interpretation function lifted to equivalence classes.
+
+While the second presentation doesn't use explicit substitutions,
+I choose to retain de Bruijn indices.
+$\var{i}$ refers to the $i$th de Bruijn index,
+and $b^\uparrow$ denotes raising all de Bruijn indices in $b$ by $1$.
+Substitution is a metafunction denoted as $b[a]$,
+which replaces $\var{0}$ in $b$ by $a$ and lowers all other de Bruijn indices in $b$ by $1$.
+Letting $b[\var{i} \mapsto a]$ denote substitution of $\var{i}$ by $a$ and lowering all other de Bruijn indices larger than $i$ by $1$,
+given a context $\Gamma, \Delta = \Gamma, A_0, \dots, A_n$, $\Delta[a]$ denotes
+$A_0[\var{0} \mapsto a], \dots, A_i[\var{i} \mapsto a], \dots, A_n[\var{n} \mapsto a]$,
+substituting references to the rightmost element of $\Gamma$ by $a$.
+Finally, dependent function types $\Pi A.B$, functions $\lambda A.a$,
+and codes of function types $\widehat{\Pi} A.B$
+introduce new bindings of type $A$, $A$, and $\el{A}$
+in $B$, $a$, and $B$, respectively.
+Note also that congruence rules for the equality judgements have been omitted for space.
+
+\begin{figure}[hp]
+\centering
+\begin{mathpar}
+\fbox{$\vdash \Gamma$} \hfill \\
+
+\infer{~}{\vdash \bullet}
+\and
+\infer{\vdash \Gamma \and \Gamma \vdash A}{\vdash \Gamma, A}
+\\
+
+\fbox{$\Gamma \vdash A$} \hfill \\
+
+\infer{\vdash \Gamma}{\Gamma \vdash \bot}
+\and
+%\infer{\vdash \Gamma}{\Gamma \vdash \top}
+%\and
+\infer{\Gamma \vdash A \and \Gamma, A \vdash B}{\Gamma \vdash \Pi A.B}
+\and
+\infer{\vdash \Gamma}{\Gamma \vdash \Set}
+\and
+\infer{\Gamma \vdash A : \Set}{\Gamma \vdash \el{A}}
+\\
+
+\fbox{$\Gamma \vdash A = A$} \hfill \\
+
+\infer{\Gamma \vdash A}{\Gamma \vdash A = A}
+\and
+\infer{\Gamma \vdash A = B}{\Gamma \vdash A = B}
+\and
+\infer{\Gamma \vdash A = B \and \Gamma \vdash B = C}{\Gamma \vdash A = C}
+\and
+\infer{\Gamma \vdash A = A' \and \Gamma, A \vdash B = B'}{\Gamma \vdash \Pi A.B = \Pi A'.B'}
+\and
+\infer{\vdash \Gamma}{\Gamma \vdash \el{\widehat{\bot}} = \bot}
+\and
+%\infer{\vdash \Gamma}{\Gamma \vdash \el{\widehat{\top}} = \top}
+%\and
+\infer{\Gamma \vdash A : \Set \and \Gamma, \el{A} \vdash B : \Set}{\Gamma \vdash \el{(\widehat{\Pi} A. B)} = \Pi (\el{A}).(\el{B})}
+\\
+
+\fbox{$\Gamma \vdash a : A $} \hfill \\
+
+\infer{\Gamma \vdash A = B \and \Gamma \vdash a : A}{\Gamma \vdash a : B}
+\and
+\infer{\vdash \Gamma, A_i, \dots, A_0}{\Gamma, A_i, \dots, A_0 \vdash \var{i} : A_i}
+\and
+\infer{\Gamma \vdash A \and \Gamma \vdash a : \bot}{\Gamma \vdash \absurd{A}{a} : A}
+\and
+%\infer{\vdash \Gamma}{\Gamma \vdash \ast : \top}
+%\and
+\infer{\Gamma \vdash A \and \Gamma, A \vdash b : B}{\Gamma \vdash \lambda A.b : \Pi A.B}
+\and
+\infer{\Gamma \vdash b : \Pi A.B \and \Gamma \vdash a : A}{\Gamma \vdash b\,a : B[a]}
+\and
+\infer{\vdash \Gamma}{\Gamma \vdash \widehat{\bot} : \Set}
+\and
+%\infer{\vdash \Gamma}{\Gamma \vdash \widehat{\top} : \Set}
+%\and
+\infer{\Gamma \vdash A : \Set \and \Gamma, \el{A} \vdash B : \Set}{\Gamma \vdash \widehat{\Pi} A.B : \Set}
+\\
+
+\fbox{$\Gamma \vdash a = a : A $} \hfill \\
+
+\infer{\Gamma \vdash A = B \and \Gamma \vdash a = b : A}{\Gamma \vdash a = b : B}
+\and
+\infer{\Gamma \vdash a : A}{\Gamma \vdash a = a : A}
+\and
+\infer{\Gamma \vdash a = b : A}{\Gamma \vdash b = a : A}
+\and
+\infer{\Gamma \vdash a = b : A \and \Gamma \vdash b = c : A}{\Gamma \vdash a = c : A}
+\and
+%\infer{\Gamma \vdash a : A \and \Gamma \vdash b : \bot}{\Gamma \vdash a = \absurd{A}{b} : A}
+%\and
+%\infer{\Gamma \vdash a : \top}{\Gamma \vdash a = \ast : \top}
+%\and
+\infer{\Gamma \vdash a : A \and \Gamma, A \vdash b : B}{\Gamma \vdash (\lambda A.b)\,a = b[a] : B[a]}
+\and
+\infer{\Gamma, A \vdash a = b^\uparrow\,\var{0} : B}{\Gamma \vdash \lambda A. a = b : \Pi A. B}
+\end{mathpar}
+\caption{Judgement forms and derivation rules for the simple type theory.}
+\label{fig:tt}
+\end{figure}
+
+\subsection{Soundness of the Interpretation}
+
+The interpretation consists of three mutually defined functions over the derivations of the contexts, types, and terms into some arbitrary CwF
+$(\mathcal{C}, T_{\mathcal{C}}, \bullet_{\mathcal{C}}, \ctxt{}, \_\rhd\_, \ctxt{\_,\_}, \p, \q)$.
+It's defined over the derivations rather than the syntax alone since this presentation of the type theory doesn't have enough annotations;
+in particular, in a syntax-directed interpretation of terms,
+while the interpretation of function application $b\,a$ additionally requires the relevant context $\Gamma$ and type $B[a]$,
+since substitution is a metafunction, the types $A$ and $B$ of $\Pi A.B$ cannot be recovered from $B[a]$ alone
+to interpret $a$ and $b$.
+By interpreting the derivations instead,
+the required contexts and types are provided by the shape of the derivation itself.
+%
+\begin{align*}
+\interp{\vdash \bullet} &= \bullet_{\mathcal{C}} \\
+\interp{\vdash \Gamma, A} &= \interp{\vdash \Gamma} \rhd \interp{\Gamma \vdash A} \\
+\interp{\Gamma \vdash \bot} &= \Empty\set{\interp{\vdash \Gamma}} \\
+\interp{\Gamma \vdash \Pi A.B} &= \pitype(\interp{\Gamma \vdash A}, \interp{\Gamma, A \vdash B}) \\
+\interp{\Gamma \vdash \Set} &= \univ\set{\interp{\vdash \Gamma}} \\
+\interp{\Gamma \vdash \el{A}} &= \El(\interp{\Gamma \vdash A : \Set}) \\
+\interp{\Gamma \vdash a : B} &= \interp{\Gamma \vdash a : A} \qquad \textit{when $\Gamma \vdash A = B$} \\
+\interp{\Gamma \vdash \var{i} : A_i} &= \pi_{\interp{\vdash \Gamma}, i} \\
+\interp{\Gamma \vdash \absurd{A}{a} : A} &= \Absurd(\interp{\Gamma \vdash A}, \interp{\Gamma \vdash a : \bot}) \\
+\interp{\Gamma \vdash \lambda A.b : \Pi A.B} &= \lam(\interp{\Gamma, A \vdash b : B}) \\
+\interp{\Gamma \vdash b\,a : B[a]} &= \app(\interp{\Gamma \vdash b : \Pi A.B})[\ctxt{\id_{\interp{\vdash \Gamma}}, \interp{\Gamma \vdash a : A}}] \\
+\interp{\Gamma \vdash \widehat{\bot} : \Set}_{\Gamma; \Set} &= \code{\Empty}\set{\interp{\vdash \Gamma}} \\
+\interp{\Gamma \vdash \widehat{\Pi} A.B : \Set}_{\Gamma; \Set} &= \code{\pitype}(\interp{\Gamma \vdash A : \Set}, \interp{\Gamma, \el{A} \vdash B : \Set})
+\end{align*}
+
+\iffalse
+\begin{align*}
+\interp{\bullet} &= \bullet_{\mathcal{C}} \\
+\interp{\Gamma, A} &= \interp{\Gamma} \rhd \interp{A}_{\Gamma} \\
+\interp{\var{i}}_\Gamma &= \pi_{\Gamma, i} \\
+\interp{\bot}_\Gamma &= \Empty\set{\interp{\Gamma}} \\
+\interp{\absurd{A}{a}}_{\Gamma; A} &= \Absurd(\interp{A}_{\Gamma}, \interp{a}_{\Gamma, \bot}) \\
+\interp{\Pi A.B}_{\Gamma} &= \pitype(\interp{A}_\Gamma, \interp{B}_{\Gamma, A}) \\
+\interp{\lambda A.b}_{\Gamma; \Pi A.B} &= \lam(\interp{b}_{\Gamma, A; B}) \\
+\interp{b\,a}_{\Gamma; ?} &= \app(\interp{b}_{\Gamma; \Pi A.B})[\ctxt{\id_{\interp{\Gamma}}, \interp{a}_{\Gamma; A}}] \\
+\interp{\Set}_{\Gamma} &= \univ\set{\interp{\Gamma}} \\
+\interp{\el{A}}_{\Gamma} &= \El(\interp{A}_{\Gamma; \Set}) \\
+\interp{\widehat{\bot}}_{\Gamma; \Set} &= \code(\interp{\bot}_{\Gamma}) \\
+\interp{\widehat{\Pi} A.B}_{\Gamma; \Set} &= \code(\interp{\Pi (\el{A}).(\el{B})}_{\Gamma})
+\end{align*}
+\fi
+
+At various points in the interpretation,
+the derivations of admissible judgements are needed despite not being direct premises.
+These derivations come from applying the following lemma as needed,
+which is proven by mutual induction over the derivations.
+Some inversion lemmas may be needed as well to handle the conversion rule.
+
+\begin{lemma}[Regularity] \label{lem:regularity} \hfill
+\begin{enumerate}
+    \item If $\Gamma \vdash A$ then $\vdash \Gamma$.
+    \item If $\Gamma \vdash A = B$ then $\Gamma \vdash A$ and $\Gamma \vdash B$.
+    \item If $\Gamma \vdash a : A$ then $\Gamma \vdash A$.
+    \item If $\Gamma \vdash a = b : A$ then $\Gamma \vdash a : A$ and $\Gamma \vdash b : A$.
+\end{enumerate}
+\end{lemma}
+
+Finally, soundness states that the interpretations yield elements of the correct sets
+(\ie are well typed, as it were),
+and that the equality judgements respect the actual equalities of the interpretations.
+Again, any missing derivations are generated by application of \cref{lem:regularity}.
+
+\begin{theorem}[Soundness of the interpretation] \hfill
+\begin{enumerate}
+    \item If $\vdash \Gamma$ then $\interp{\vdash \Gamma} \in \mathcal{C}$.
+    \item If $\Gamma \vdash A$ then $\interp{\Gamma \vdash A} \in \Ty_{\mathcal{C}}(\interp{\vdash \Gamma})$.
+    \item If $\Gamma \vdash A = B$ then $\interp{\Gamma \vdash A} = \interp{\Gamma \vdash B}$.
+    \item If $\Gamma \vdash a : A$ then $\interp{\Gamma \vdash a : A} \in \Tm_{\mathcal{C}}(\interp{\vdash \Gamma}, \interp{\Gamma \vdash A})$.
+    \item If $\Gamma \vdash a = b : A$ then $\interp{\Gamma \vdash a : A} = \interp{\Gamma \vdash b : A}$.
+\end{enumerate}
+\end{theorem}
+
+According to \citet{synsem}, to prove soundness, additional lemmas for preservation of weakening and substitution are required.
+Of course, weakening and substitution themselves are required of the type theory first.
+
+\begin{lemma}[Weakening] Let $\Delta = A_{i-1}, \dots, A_0$ and suppose $\Gamma \vdash A_i$. \hfill
+\begin{enumerate}
+    \item If $\Gamma, \Delta \vdash B$ then $\interp{\Gamma, A_i, \Delta \vdash B} = \interp{\Gamma, \Delta \vdash B}[\wk_{\interp{\vdash \Gamma, A_i, \Delta}, i}]$.
+    \item If $\Gamma, \Delta \vdash b : B$ then $\interp{\Gamma, A_i, \Delta \vdash b : B} = \interp{\Gamma, \Delta \vdash b : B}[\wk_{\interp{\vdash \Gamma, \Delta}, i}(A_i)]$.
+\end{enumerate}
+\end{lemma}
+
+\begin{lemma}[Substitution] Let $\Delta = A_i, A_{i-1}, \dots, A_0$ and suppose $\Gamma \vdash a : A_i$. \hfill
+\begin{enumerate}
+    \item If $\Gamma, A_i, \Delta \vdash B$ then $\interp{\Gamma, \Delta[a] \vdash B[a]} = \interp{\Gamma, A_i, \Delta \vdash B}[\sb_{\interp{\Gamma, A_i, \Delta}, i}(a)]$.
+    \item If $\Gamma, A_i, \Delta \vdash b : B$ then $\interp{\Gamma, \Delta[a] \vdash b[a] : B[a]} = \interp{\Gamma, A_i, \Delta \vdash b : B}[\sb_{\interp{\Gamma, A_i, \Delta}, i}(a)]$.
+\end{enumerate}
+\end{lemma}
+
+\section{Semantic Models}
+
+Our goal in using CwFs is to show consistency,
+which for our simple type theory is defined as the metatheoretical statement
+of uninhabitance of the empty type, or $\bullet \nvdash e : \bot$ for any closed term $e$.
+If there were such a term, then \emph{all} types $A$ are inhabited via $\absurd{A}{e}$.
+By the interpretation, consistency is stated in the CwF as emptiness of the set $\Ty(\bullet, \Empty)$.
+
+To show consistency, we need to find a semantic model in which $\Tm(\bullet, \Empty)$ is empty,
+since if there were some closed term of type $\bot$,
+initiality of the term model yields an element of $\Tm(\bullet, \Empty)$ by the interpretation,
+which would be a contradiction in the semantic model.
+
+\subsection{Type-Theoretic Model using Induction--Recursion}
+
+We've seen that the signature of a CwF can be presented as a GAT and implemented as a record type in Agda
+--- up to transporting some propositional equalities as needed.
+Can this record type be inhabited?
+And more importantly, can it be inhabited in a way such that the propositional equalities hold definitionally
+so that annoying transports aren't needed to even state them?
+
+Such a semantic model is known as a \emph{shallow embedding}
+(as opposed to a \emph{deep embedding} where equalities aren't restricted to definitional equality of the host type theory),
+and \citet{shallow} show how to construct such a semantic model in Agda.
+Our simple type theory is significantly simpler, but the same principles apply.
+The key idea is that the set of contexts is modelled by a universe {\codefont Set},
+and a substitution {\codefont Δ ⇒ Γ} is exactly the type of functions {\codefont Δ → Γ}.
+Following that, types in the CwF are types in Agda that depend on a context.
+Everything else more or less falls into place by following the types.
+
+\begin{minted}{agda}
+-- Set is a category with a terminal element ⊤
+open import Agda.Builtin.Unit
+
+C : Set₁
+C = Set
+
+_⇒_ : C → C → Set
+Δ ⇒ Γ = Δ → Γ
+
+id : ∀ {Γ} → Γ ⇒ Γ
+id x = x
+
+_∘_ : ∀ {Ξ Δ Γ} → (Δ ⇒ Γ) → (Ξ ⇒ Δ) → (Ξ ⇒ Γ)
+(γ ∘ δ) x = γ (δ x)
+
+∙ : C
+∙ = ⊤
+
+⟨⟩ : ∀ {Γ} → Γ ⇒ ∙
+⟨⟩ _ = tt
+
+-- Ty are types that depend on a context
+
+Ty : C → Set₁
+Ty Γ = Γ → Set
+
+infixl 40 _[_]
+_[_] : ∀ {Δ Γ} → Ty Γ → (Δ ⇒ Γ) → Ty Δ
+(A [ γ ]) x = A (γ x)
+
+-- Tm are terms of Ty
+
+Tm : ∀ Γ → Ty Γ → Set
+Tm Γ A = (x : Γ) → A x
+
+infixl 40 _⟮_⟯
+_⟮_⟯ : ∀ {Δ Γ} {A : Ty Γ} → Tm Γ A → (γ : Δ ⇒ Γ) → Tm Δ (A [ γ ])
+(a ⟮ γ ⟯) x = a (γ x)
+\end{minted}
+
+Context extension by some type is defined as a dependent pair of a context and a term of a type in that context.
+Since the only contexts we have are the empty context and constructed by context extension,
+contexts are essentially lists of types, each one depending on all prior types,
+packaged up as an arbitrary-length dependent pair.
+Here, we see why $\p$ and $\q$ are called the projections of a context extension.
+
+\begin{minted}{agda}
+-- Contexts are lists of types
+
+infixl 30 _▷_
+record _▷_ (Γ : C) (A : Ty Γ) : C where
+  constructor _∷_
+  field
+    p : Γ
+    q : A p
+open _▷_
+
+⟨_,_⟩ : ∀ {Δ Γ} {A : Ty Γ} → (γ : Δ ⇒ Γ) → Tm Δ (A [ γ ]) → (Δ ⇒ Γ ▷ A)
+⟨ γ , a ⟩ x = γ x ∷ a x
+
+_↑_ : ∀ {Δ Γ} → (γ : Δ ⇒ Γ) → (A : Ty Γ) → (Δ ▷ A [ γ ] ⇒ Γ ▷ A)
+γ ↑ A = ⟨ γ ∘ p , q ⟩
+\end{minted}
+
+The equations that these definitions must obey all hold definitionally,
+since they correspond to the rules of function application and composition in Agda.
+The propositional equalities, all proven by {\codefont refl}, can be found in \cref{app:agda}.
+
+Finally, we define the types in the simple type theory as exactly the corresponding types in Agda,
+albeit with additional dependencies on contexts.
+In particular, $\bot$ truly is the empty type, and $\Pi$ truly is a dependent function type former.
+Notice that {\codefont lam} corresponds to currying from a function on a context,
+while {\codefont app} corresponds to currying into a function on a context.
+
+\begin{minted}{agda}
+-- ⊥-structure
+open import Data.Empty renaming (⊥ to ⊥′)
+
+⊥ : ∀ {Γ} → Ty Γ
+⊥ _ = ⊥′
+
+abs : ∀ {Γ} → (A : Ty Γ) → Tm Γ ⊥ → Tm Γ A
+abs _ b x = ⊥-elim (b x)
+
+-- Π-structure
+
+Π : ∀ {Γ} → (A : Ty Γ) → Ty (Γ ▷ A) → Ty Γ
+Π A B x = (a : A x) → B (x ∷ a)
+
+lam : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} → Tm (Γ ▷ A) B → Tm Γ (Π A B)
+lam b x a = b (x ∷ a)
+
+app : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} → Tm Γ (Π A B) → Tm (Γ ▷ A) B
+app b (x ∷ a) = b x a
+\end{minted}
+
+Finally, $\univ$ and $\El$ are implemented in the usual inductive--recursive manner,
+where $\univ$ is an inductive type consisting of constructors for each code,
+and $\El$ is a recursive function on codes into types.
+We have to be a little careful about the appearance of contexts:
+if we implement $\univ$ directly as {\codefont data U : {Γ : U} → Ty Γ},
+then given {\codefont x, y : Γ}, we have {\codefont U x ≢ U y} since the context isn't irrelevant in the type,
+and {\codefont U[]} won't hold definitionally.
+Therefore, {\codefont U′} and {\codefont el′} are first defined without contexts,
+and then the definitions involving contexts are defined in terms of them.
+This recovers definitional equality of all of the equations we need to prove,
+which again are found in \cref{app:agda}.
+
+\begin{minted}{agda}
+-- U-structure
+
+data U′ : Set
+el′ : U′ → Set
+
+data U′ where
+  ⊥ᶜ′ : U′
+  Πᶜ′ : (A : U′) → (el′ A → U′) → U′
+
+el′ ⊥ᶜ′ = ⊥′
+el′ (Πᶜ′ A B) = (a : el′ A) → el′ (B a)
+
+U : ∀ {Γ} → Ty Γ
+U _ = U′
+
+el : ∀ {Γ} → Tm Γ U → Ty Γ
+el t x = el′ (t x)
+
+⊥ᶜ : ∀ {Γ} → Tm Γ U
+⊥ᶜ _ = ⊥ᶜ′
+
+Πᶜ : ∀ {Γ} → (A : Tm Γ U) → Tm (Γ ▷ el A) U → Tm Γ U
+Πᶜ A B x = Πᶜ′ (A x) (λ a → B (x ∷ a))
+\end{minted}
+
+Here is also where the inconsistency of type-in-type would manifest.
+Suppose we added a code for $\univ$ as a constructor {\codefont Uᶜ′ : U′}.
+To complete the definition of {\codefont el′}, we need to implement the case for {\codefont Uᶜ′};
+it should decode to {\codefont U} itself, so we have {\codefont el′ Uᶜ = U′}.
+But this causes Agda to complain about the lack of strict positivity of {\codefont U}.
+
+This is due to the presence of {\codefont Πᶜ}:
+its second explicit argument is {\codefont el′ A → U′},
+but since {\codefont el′} could potentially yield {\codefont U′},
+the second argument's type could have {\codefont U′} to the left of an arrow,
+making {\codefont U′} non--strictly-positive.
+
+Finally, consistency is the noninhabitance of $\Tm(\bullet, \bot)$,
+which is definitionally {\codefont (x : ⊤) → ⊥ x}.
+Since this implies that the empty Agda type {\codefont ⊥ tt} is inhabited,
+which in turn yields an inhabitant of \emph{any} type,
+this is a contradiction (assuming Agda is consistent),
+so our simple type theory must be consistent as well.
+
+\begin{minted}{agda}
+absurd : ∀ {ℓ} {A : Set ℓ} → Tm ∙ ⊥ → A
+absurd b = ⊥-elim (b tt)
+\end{minted}
+
+\subsubsection{Variations on Universes}
+
+There are other ways to implement $\univ$ and $\El$,
+especially if the type theory has a universe hierarchy.
+For instance, following \citet{shallow},
+we can define {\codefont U i} at level {\codefont i} as exactly the Agda universe {\codefont Set i},
+forgoing explicit type encodings.
+Then {\codefont el} would be a trivial identity function,
+and the codes can be constructed directly as Agda types.
+In this situation, $\Ty$ would also need to be indexed by a universe level.
+
+\begin{minted}{agda}
+Ty : ∀ i Γ → Set (lsuc i)
+Ty i Γ = Γ → Set i
+
+Tm : ∀ {i} Γ → (A : Ty i Γ) → Set (lsuc i)
+Tm Γ A = (x : Γ) → A x
+
+U : ∀ {Γ} i → Ty (lsuc i) Γ
+U i _ = Set i
+
+el : ∀ {Γ} {i} → Tm Γ (U i) → Ty i Γ
+el t = t
+
+⊥ᶜ : ∀ {i} {Γ} → Ty i Γ
+⊥ᶜ _ = ⊥
+
+Πᶜ : ∀ {i} {Γ} → (A : Tm Γ (U i)) → Tm (Γ ⊳ el A) (U i) → Tm Γ (U i)
+Πᶜ A B x = (a : A x) → B (x ∷ a)
+\end{minted}
+
+This would be difficult to adapt to a type theory with a single universe,
+since we would need {\codefont U} to live in {\codefont Ty (lsuc lzero)}
+while all other types live in {\codefont Ty lzero},
+preventing quantification over $\Set$ that is currently possible in our type theory.
+In a sense, this is the \emph{shallowest} embedding within Agda,
+since even encodings of types and universes in the type theory must correspond exactly to Agda's.
+
+On the other hand, the implementation we have could also be considered \emph{too} shallow,
+since if we generalize to a universe hierarchy,
+{\codefont el} still has to return an Agda type of the desired universe level,
+so the codes we're allowed to decode must also fit within Agda's hierarchy of universes.
+Instead, following the technique of \citet{hierarchy},
+{\codefont Ty} corresponds to encodings of types in Agda,
+while {\codefont Tm} corresponds to terms of their decodings.
+As usual, {\codefont U} and {\codefont el} form an inductive--recursive definition.
+This tangles up the implementations of $\Ty, \Tm, \univ$, and $\El$,
+but it still fits within the CwF signature supporting $U$-structures.
+
+\begin{minted}{agda}
+Ty : ∀ i Γ → Set
+Tm : ∀ {i} Γ → Ty i Γ → Set
+data U′ : ∀ i → Set
+el′ : ∀ {i} → U′ i → Set
+
+Ty i Γ = Γ → U′ i
+Tm Γ A = (x : Γ) → el′ (A x)
+
+data U′ where
+  ...
+  Uᶜ : ∀ i → U′ (i + 1)
+
+...
+el′ (Uᶜ i) = U′ i
+
+U : ∀ {Γ} i → Ty (i + 1) Γ
+U i _ = Uᶜ i
+
+el : ∀ {Γ} {i} → Tm Γ (U i) → Ty i Γ
+el t x = t x
+\end{minted}
+
+Universe levels are no longer restricted to naturals,
+or even to Agda's universe levels:
+\citet{hierarchy} show that they can be an arbitrary well-founded order.
+Even so, we can't apply this technique to our type theory with a single universe,
+since it fundamentally relies on there being a code for {\codefont U}.
+
+Note that because types are modelled entirely by the codes,
+everything can live in {\codefont Set};
+using induction--recursion to model types moves them further away from Agda's own types
+and the model can be thought of as being even less shallow.
+However, terms in the type theory are still Agda terms of the appropriate type.
+Once $\Tm$ starts being implemented as, say, an inductive type,
+we really start moving into deep embeddings,
+and showing consistency becomes less straightforward
+(unless there's a way to interpret the terms of the inductive type back into Agda terms,
+as is done by \citet{kipling}).
+
+\subsection{Set-Theoretic Model}
+
+Moving from type theory to set theory,
+it's possible to construct a set-theoretic model exactly analogous to the type-theoretic model,
+assuming a set theory with inductive--recursive functions.
+We also need general cartesian products $\prod_{a \in A} B_a$
+and disjoint unions $\coprod_{a \in A} B_a$;
+I write these instead as $\sFun{a}{A}{B(a)}$ and $\sPair{a}{A}{B(a)}$, respectively,
+and informally treat their elements like dependent functions and dependent pairs.
+
+The first step is to find a ``large'' enough set to play the role of {\codefont Set}.
+The standard method is to postulate a \emph{Grothendieck} universe $\mathcal{G}$,
+which satisfies the following properties:
+
+\begin{itemize}
+    \item $\varnothing \in \mathcal{G}$;
+    \item If $A \in \mathcal{G}$ and $B \in A$ then $B \in \mathcal{G}$;
+    \item If $A \in \mathcal{G}$ then so is its powerset $\wp(A) \in \mathcal{G}$; and
+    \item If $A \in \mathcal{G}$ and $B : A \to \mathcal{G}$ then $\bigcup_{a \in A} B(a) \in \mathcal{G}$.
+\end{itemize}
+
+\begin{exercise}
+Show that the following closure properties hold:
+\begin{itemize}
+    \item If $A \in \mathcal{G}$ and $B \subseteq A$ then $B \in \mathcal{G}$.
+    \item If $A, B \in \mathcal{G}$ then $A \times B \in \mathcal{G}$ and $A \cup B \in \mathcal{G}$.
+    \item If $A \in \mathcal{G}$ and $B : A \to \mathcal{G}$ then
+    $\sFun{a}{A}{B(a)} \in \mathcal{G}$ and $\sPair{a}{A}{B(a)} \in \mathcal{G}$.
+\end{itemize}
+\end{exercise}
+
+The set-theoretic model excluding $U$-structures can then be defined in direct analogy to the type-theoretic model.
+For concision, I exclude the types of definitions are arguments (that is, the sets to which they belong).
+Below, $\mathit{efq}$ is the elimination principle for elements of the empty set: \textit{ex falso quodlibet}.
+%
+\begin{align*}
+    \mathcal{C} &= \mathcal{G} \\
+    \Delta \to \Gamma &= \Delta \to \Gamma \quad \textrm{(the function space)} \\
+    \id_\Gamma(x) &= x \\
+    (\gamma \circ \delta)(x) &= \gamma(\delta(x)) \\
+    \bullet &= \set{\varnothing} \\
+    \ctxt{}(x) &= \varnothing \\
+    \Ty(\Gamma) &= \Gamma \to \mathcal{G} \\
+    \Tm(\Gamma, A) &= \sFun{x}{\Gamma}{A(x)} \\
+    A[\gamma](x) &= A(\gamma(x)) \\
+    a[\gamma](x) &= a(\gamma(x)) \\
+    \Gamma \rhd A &= \sPair{x}{\Gamma}{A(x)} \\
+    \p_{\Gamma, A}(x, a) &= x \\
+    \q_{\Gamma, A}(x, a) &= a \\
+    \ctxt{\gamma, a}(x) &= (\gamma(x), a(x)) \\
+    \Empty(\Gamma) &= \varnothing \\
+    \Absurd(A, b) &= \mathit{efq}(b) \\
+    \pitype(A, B)(x) &= \sFun{a}{A(x)}{B(x, a)} \\
+    \lam(b)(x)(a) &= b(x, a) \\
+    \app(b)(x, a) &= b(x)(a)
+\end{align*}
+
+Now we simultaneously define a set $U \in \mathcal{G}$ inductively and a function $\mathit{el} : U \to \mathcal{G}$ recursively:
+
+\begin{itemize}
+    \item $U_0 = \set{\code{\bot}}$;
+    \item If $A \in U_i$ and $B : \mathit{el}(A) \to U_i$ then $\code{\Pi}(A, B) \in U_{i+1}$;
+    \item $\mathit{el}_0(\code{\bot}) = \varnothing$;
+    \item $\mathit{el}_{i+1}(\code{\Pi}(A, B)) = \sFun{a}{\mathit{el}_i(A)}{\mathit{el}_i(B(a))}$; and
+    \item $U = \bigcup_{i \geq 0} U_i$ and $\mathit{el} = \bigcup_{i \geq 0} \mathit{el}_i$
+\end{itemize}
+
+Importantly, by the closure properties of $\mathcal{G}$, $\mathit{el}_i$ always returns a set in $\mathcal{G}$.
+Furthermore, this construction bars us from including a faithful code of $U$,
+since we would need $\mathit{el}_0(\code{U}) = U$ while we've not yet finished defining $U$.
+To finish things off, the final definitions of the set-theoretic model are below.
+%
+\begin{align*}
+    \univ(x) &= U \\
+    \El(t)(x) &= \mathit{el}(t(x)) \\
+    \code{\Empty}(x) &= \code{\bot} \\
+    \code{\pitype}(A, B)(x) &= \code{\Pi}(A(x), a \mapsto B(x, a))
+\end{align*}
+
+\begin{exercise}
+Verify that the required equations hold under set equality.
+\end{exercise}
+
+Consistency arises from emptiness of the empty set,
+for if $\Tm(\bullet, \Empty) = \set{\varnothing} \to \varnothing$ were inhabited by some set $A$,
+then $A(\varnothing)$ would be an element of the empty set, which is a contradiction.
+
+\subsubsection{Other Models in Sets}
+
+Our simple type theory is incredibly simple.
+Adding well-known features such as a propositional equality type will immediately require a different set-theoretic model.
+One option is to use \emph{setoids} instead of sets to interpret types:
+these are sets equipped with an equivalence relation,
+and equality at a type corresponds to the equivalence relation for that set.
+\citet{ext,exteq}, for example, use setoid models for extensional Martin-L\"of type theory (MLTT),
+and \citet{obseq} use a setoid model for a type theory with observational equality.
+Another option is to use \emph{groupoids},
+which are categories where all morphisms are isomorphisms,
+and equality between two terms at a type corresponds to morphisms between them in a groupoid.
+\citet{groupoid} use a groupoid model to show independence of UIP from intensional MLTT.
+
+\iffalse
+There are also models based on realizability semantics,
+such as $\omega$-sets \citep{synsem}, $D$-sets \citep{D-sets}, and $\Lambda$-sets \citep{Lambda-sets},
+but I can't figure out how they work outside of strong normalization or how they fit into CwFs.
+\fi
+
+\subsection{Presheaf Model}
+
+An $\mathcal{S}$-valued presheaf over $\mathcal{K}$ is a contravariant functor $\op{\mathcal{K}} \to \mathcal{S}$.
+For instance, in CwFs, $T$ is a $\cat{Fam}$-valued presheaf over the category of contexts.
+Generally, presheaves are valued over $\cat{Set}$ if not further specified.
+
+Presheaves can also be used as yet another model for CwFs and, according to \citet{synsem},
+
+\begin{quote}
+    [...] generalises the set-theoretic model in that types are interpreted as variable sets (presheaves) or families of such.
+\end{quote}
+
+Rather than modelling contexts as sets,
+we model them as presheaves over some category $\mathcal{K}$,
+with substitution as natural transformations between presheaves,
+and the rest accordingly.
+Indeed, many parts of the presheaf model will simply resemble the set theoretic model
+indexed by an additional category $\mathcal{K}$.
+
+\subsubsection{Contexts}
+
+\begin{definition}
+Let $\mathcal{K}$ be a category.
+Then $\widehat{\mathcal{K}}$ is the category of presheaves over $\mathcal{K}$,
+whose objects are presheaves and morphisms are natural transformations between them.
+That is, given two presheaves $F, G : \op{\mathcal{K}} \to \cat{Set}$,
+two objects $x, y \in \mathcal{K}$, a morphism $\gamma : x \to y$, and a natural transformation $\nt : F \to G$,
+the following square commutes,
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    F(x)
+        \arrow[r, rightarrow, "\nt(x)"]
+        \arrow[d, rightarrow, "F(\gamma)"'] &
+    G(x)
+        \arrow[d, rightarrow, "G(\gamma)"] \\
+    F(y)
+        \arrow[r, rightarrow, "\nt(y)"'] &
+    G(y)
+\end{tikzcd}
+\end{center}
+giving the equation $\nt(y) \circ F(\gamma) = G(\gamma) \circ \nt(x)$.
+For convenience, I also write the natural transformation applied to an object as a subscript, \eg $\nt_x$.
+\end{definition}
+
+Letting $\mathcal{K}$ be some category,
+we use $\widehat{\mathcal{K}}$ as the category of contexts.
+The terminal context $\bullet$ is a presheaf mapping all objects in $\mathcal{K}$
+to the set $\set{\varnothing}$ and all morphisms of $\mathcal{K}$
+to the identity morphism $\id_{\varnothing}$.
+Given a presheaf $\Gamma \in \widehat{\mathcal{K}}$,
+the terminal map $\ctxt{}_\Gamma$ is then the natural transformation $\Gamma \to \bullet$ where,
+for any $x \in \mathcal{K}, y \in \Gamma(x)$, we have $\ctxt{}_\Gamma(x)(y) = \varnothing$.
+
+\subsubsection{Types and Terms}
+
+\begin{definition}
+Let $\Gamma$ be a presheaf over $\mathcal{K}$.
+Then we have the category of its elements $\set{\Gamma(I)}_{I \in \mathcal{K}}$,
+whose objects are pairs $(I, \gamma)$ where $I \in \mathcal{K}$ and $\gamma \in \Gamma(I)$,
+and for morphisms $f : J \to I$ in $\mathcal{K}$
+there is a morphism $(J, \Gamma(f)(\gamma)) \to (I, \gamma)$,
+noting that $\Gamma(f)(\gamma) \in \Gamma(J)$.
+This category is also written as $\int_\mathcal{K} \Gamma$,
+and the morphism is also written as $f_\gamma$.
+\end{definition}
+
+\begin{definition}
+Let $\Delta, \Gamma$ be presheaves over $\mathcal{K}$,
+and let $\gamma : \Delta \to \Gamma$ be a natural transformation.
+We define the functor $\int_{\mathcal{K}} \gamma : \int_{\mathcal{K}} \Delta \to \int_{\mathcal{K}} \Gamma$
+with its action on objects $(I, \delta) \in \int_{\mathcal{K}} \Delta$
+as $(\int_{\mathcal{K}} \gamma)(I, \delta) = (I, \gamma_I(\delta))$.
+Given a morphism $f_\delta : (J, \Gamma(f)(\delta)) \to (I, \delta)$,
+we require that the functor's action on it be a morphism $(J, \gamma_J(\Gamma(f)(\delta))) \to (I, \gamma_I(\delta))$.
+By naturality, $\gamma_J \circ \Gamma(f) = \Gamma(f) \circ \gamma_I$,
+so we can define this action as
+$(\int_{\mathcal{K}} \gamma)(f_\delta) = f_{\gamma_I(\delta)} : (J, \Gamma(f)(\gamma_I(\delta))) \to (I, \gamma_I(\delta))$.
+\end{definition}
+
+Given a context $\Gamma \in \widehat{\mathcal{K}}$, we define $\Ty(\Gamma)$ as the set of presheaves over $\int_\mathcal{K} \Gamma$,
+so that a type $A \in \Ty(\Gamma)$ is a presheaf $A : \op{(\int_{\mathcal{K}} \Gamma)} \to \cat{Set}$.
+Given a substitution (\ie a natural transformation of presheaves) $\gamma : \Delta \to \Gamma$,
+we need to define application of substitution $A[\gamma] : \op{(\int_{\mathcal{K}} \Delta)} \to \cat{Set}$.
+Since $\int_{\mathcal{K}} \gamma : \int_{\mathcal{K}} \Delta \to \int_{\mathcal{K}} \Gamma$,
+we can define the application by composition $A[\gamma] = A \circ \int_{\mathcal{K}} \gamma$.
+
+Given a context $\Gamma \in \widehat{\mathcal{K}}$ and a type $A \in \Ty(\Gamma)$,
+$\Tm(\Gamma, A)$ is the function space $A(\_)$.
+That is, given $a \in \Tm(\Gamma, A)$ and $(I, \delta) \in \int_{\mathcal{K}} \Gamma$,
+we have $a(I, \delta) \in A(I, \delta)$.
+Given a substitution $\gamma : \Delta \to \Gamma$, we need to define application of substitution $a[\gamma] : A[\gamma](\_)$.
+That is, we need $a[\gamma](I, \delta) \in A[\gamma](I, \delta)$, which by definition is in $A(I, \gamma_I(\delta))$.
+We can then define the application by $a[\gamma](I, \delta) = a(I, \gamma_I(\delta))$.
+
+\subsubsection{Context Comprehension}
+
+Let $\Gamma \in \mathcal{K}, A \in \Ty(\Gamma)$.
+Context extension $\Gamma \rhd A$ is then a presheaf on $\mathcal{K}$
+whose action on $I \in \mathcal{K}$ is the set $\sPair{\gamma}{\Gamma(I)}{A(I, \gamma)}$.
+Its action on a morphism $f : J \to I$ is a function $\sPair{\gamma}{\Gamma(I)}{A(I, \gamma)} \to \sPair{\gamma}{\Gamma(J)}{A(J, \gamma)}$
+given by $(\Gamma \rhd A)(f)(\gamma, a) = (\Gamma(f)(\gamma), A(f_\gamma)(a))$,
+noting that $A(f_\gamma) : A(I, \gamma) \to A(J, \Gamma(f)(\gamma))$.
+Letting $\gamma : \Delta \to \Gamma$, $A \in \Ty(\Gamma)$, and $a \in \Tm(\Gamma, A[\gamma])$,
+substitution extension $\ctxt{\gamma, a}$ is a natural transformation $\Delta \to \Gamma \rhd A$
+given by $\ctxt{\gamma, a}(I)(\delta) = (\gamma_I(\delta), a(I, \gamma_I(\delta)))$.
+Finally, we define $\p_{\Gamma, A}(I)(\gamma, a) = \gamma$ and $\q_{\Gamma, A}(I)(\gamma, a) = a$, as expected.
+
+\subsubsection{Structures}
+
+I leave adding $\bot$-structures, $\Pi$-structures, and $U$-structures
+as exercises for the reader.
+I don't really know how to extend the model to $U$-structures anyway.
+Some details have been outlined by \citet{presheaf}.
+
+\subsubsection{Summary}
+
+Overall, the presheaf model is essentially adding indexing by an arbitrary category to the set-theoretic model.
+In the below, I define each component of the CwF using more type-theoretic--like notation,
+but ultimately they are all set-theoretic or category-theoretic in nature.
+As such, I omit the required category, functor, and natural transformation laws,
+and continue to (ab)use the convention of function application notation for the functorial action on both objects and morphisms,
+although I note their existence explicitly (\eg in $\mathcal{C}$ and in $\Ty$).
+Additionally, I instead use $\_\To\_$ for substitutions to avoid confusing with ordinary function arrows.
+Finally, assume some category $\mathcal{K}$.
+
+\begin{align*}
+\mathcal{C} &= \Pair{\Gamma}{\mathcal{K} \to \mathcal{G}}{(\isFun{x, y}{\mathcal{K}}{\Fun{f}{x \to y}{\Gamma(y) \to \Gamma(x)}})} \\
+\Delta \To \Gamma &= \sFun{x}{\mathcal{K}}{\Delta(x) \to \Gamma(x)} \\
+\id_\Gamma(x)(y) &= y \\
+(\gamma \circ \delta)(x)(y) &= \gamma(x)(\delta(x)(y)) \\
+\bullet(x) &= \set{\varnothing} \\
+\bullet(f)(\varnothing) &= \varnothing \\
+\ctxt{}(x)(y) &= \varnothing \\
+\Ty(\Gamma) &= (A : \sFun{x}{\mathcal{K}}{\Gamma(x) \to \mathcal{G}}) \\
+    &\times (\isFun{x, y}{\mathcal{K}}{\Fun{f}{x \to y}{\sFun{z}{\Gamma(y)}{A(y)(z) \to A(x)(\Gamma(f)(z))}}}) \\
+A[\gamma](x)(y) &= A(x)(\gamma(x)(y)) \\
+\Tm(\Gamma, A) &= \sFun{x}{\mathcal{K}}{\sFun{y}{\Gamma(x)}{A(x)(y)}} \\
+a[\gamma](x)(y) &= a(x)(\gamma(x)(y)) \\
+(\Gamma \rhd A)(x) &= \sPair{y}{\Gamma(x)}{A(x)(y)} \\
+(\Gamma \rhd A)(f)(y, a) &= (\Gamma(f)(y), A(f)(y)(a)) \\
+\p_{\Gamma, A}(x)(y, a) &= y \\
+\q_{\Gamma, A}(x)(y, a) &= a \\
+\ctxt{\gamma, a}(x)(y) &= (\gamma(x)(y), a(x)(y))
+\end{align*}
+
+\iffalse
+\begin{align*}
+\Empty(\Gamma)(x)(y) &= \varnothing \\
+\Empty(\Gamma)(f)(z)(\varnothing) &= \varnothing \\
+\Absurd(A, b)(x)(y) &= \mathit{efq}(b(x)(y)) \\
+\pitype(A, B)(x)(y) &= \isFun{z}{\mathcal{K}}{\Fun{f}{z \to x}{\sFun{a}{A(z)(\Gamma(f)(y)}{B(z)(\Gamma(f)(y), a)}}} \\
+\pitype(A, B)(f)(z)(w)(g)(a) &= w(f \circ g)(a)
+\end{align*}
+\fi
+
+\section{Natural Models}
+
+Natural models are an alternative formulation of the categorical structure involved in CwFs.
+When fully unrolled, they yield equivalent definitions and equations to those of CwFs,
+but package them up in a much more succinct form in terms of concepts familiar to most category theorists.
+In short, a natural model is a representable natural transformation between two presheaves over a category with a terminal object.
+There's a lot of information hidden inside of these terms; we'll unfold definitions level by level.
+At the surface level, we have that a natural model consists of:
+
+\begin{itemize}
+    \item A category $\mathcal{C}$ with a terminal object $\bullet$;
+    \item Presheaves (\ie contravariant functors into \cat{Set})
+    $\Ty : \op{\mathcal{C}} \to \cat{Set}$ and
+    $\Tm : \op{\mathcal{C}} \to \cat{Set}$;
+    \item A natural transformation $\tau : \Tm \to \Ty$; and
+    \item A representation of $\tau$.
+\end{itemize}
+
+The category $\mathcal{C}$ and its terminal object represent as before contexts and the empty context,
+with its morphisms as subsitutions.
+Given some context $\Gamma \in \mathcal{C}$, $\Ty(\Gamma)$ represents the set of well-formed types under $\Gamma$
+and $\Tm(\Gamma)$ represents the set of well-typed terms under $\Gamma$.
+The functorial actions of $\Ty$ and $\Tm$ on a substitution $\gamma$ are once again applications of substitution $\_[\gamma]$, respecting identity substitutions and composition of substitutions.
+
+Given $\Gamma \in \mathcal{C}$, the natural transformation provides a function $\tau_\Gamma : \Tm(\Gamma) \to \Ty(\Gamma)$:
+given some term, it yields the type of that term.
+Given a substitution $\gamma : \Delta \to \Gamma$,
+naturality gives the following commuting square:
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \Tm(\Gamma)
+        \arrow[r, rightarrow, "\tau_\Gamma"]
+        \arrow[d, rightarrow, "{\_[\gamma]}"'] &
+    \Ty(\Gamma)
+        \arrow[d, rightarrow, "{\_[\gamma]}"] \\
+    \Tm(\Delta)
+        \arrow[r, rightarrow, "\tau_\Delta"'] &
+    \Ty(\Delta)
+\end{tikzcd}
+\end{center}
+
+Given a term $a \in \Tm(\Gamma)$, we have that $\tau_\Delta(a[\gamma]) = \tau_\Gamma(a)[\gamma]$,
+or that the type of $a[\gamma]$ is the type of $a$ applied to the substitution $\gamma$.
+As typing judgements, we would have that $\Gamma \vdash a : A$ implies $\Delta \vdash a[\gamma] : A[\gamma]$.
+
+Before we can dissect the representation of $\tau$,
+we need additional category-theoretic concepts in order to unfold all of the definitions.
+
+\subsection{Category Theory Speedrun any\%}
+
+To get through all of the definitions, we only need to know the concepts of \emph{pullbacks},
+\emph{Yoneda embeddings}, and one direction of the isomorphism in the \emph{Yoneda lemma}.
+Rather than stating them in the most general form, I'll specialize some concepts to our application.
+
+\begin{definition}[Pullback]
+Suppose we have three objects $A, B, C$ in some category and morphisms $a : A \to C, b : B \to C$.
+A pullback consists of an object $P$ and two morphisms $p_A : P \to A, p_B : P \to B$
+such that given any other object $Q$ and morphisms $q_A : Q \to A, q_B : Q \to B$,
+there is a unique morphism $\ctxt{q_A, q_B} : Q \to P$
+such that all of the squares below commute.
+\begin{center}
+\begin{tikzcd}
+    Q
+        \arrow[rrd, rightarrow, bend left, "q_B"]
+        \arrow[ddr, rightarrow, bend right, "q_A"']
+        \arrow[rd, dashed, "\ctxt{q_A, q_B}"] \\
+    & P
+        \arrow[r, rightarrow, "p_B"]
+        \arrow[d, rightarrow, "p_A"'] &
+    B
+        \arrow[d, rightarrow, "b"] \\
+    & A
+        \arrow[r, rightarrow, "a"'] &
+    C
+\end{tikzcd}
+\end{center}
+A commuting square (drawn by $P, A, B, C$ above) is a pullback if it has that unique morphism for every such $Q$.
+\end{definition}
+
+\begin{definition}[Yoneda embedding]
+Given some category $\mathcal{C}$, the Yoneda embedding is a functor from $\mathcal{C}$ to presheaves over $\mathcal{C}$.
+$$\yo : \mathcal{C} \to (\op{\mathcal{C}} \to \cat{Set})$$
+Given some object $\Gamma \in \mathcal{C}$, $\yo_\Gamma$ is a presheaf.
+When applied to another object $\Delta \in \mathcal{C}$,
+it yields the set of morphisms in $\mathcal{C}$
+$$\yo_\Gamma(\Delta) = \Delta \to \Gamma,$$
+and when applied to the morphism $\gamma : \Xi \to \Delta$,
+it is postcomposition of morphisms.
+Note the contravariance with respect to $\gamma$.
+\begin{align*}
+    \yo_\Gamma(\gamma) &: \yo_\Gamma(\Delta) \to \yo_\Gamma(\Xi) \\
+    &: (\Delta \to \Gamma) \to (\Xi \to \Gamma) \\
+    \yo_\Gamma(\gamma)(\delta) &= \delta \circ \gamma
+\end{align*}
+Given some morphism $\gamma : \Xi \to \Delta$, $\yo_\gamma$ is a natural transformation between presheaves.
+$$\yo_\gamma : \yo_\Xi \to \yo_\Delta$$
+When applied to another object $\Gamma \in \mathcal{C}$,
+it is a precomposition of morphisms.
+\begin{align*}
+    \yo_\gamma(\Gamma) &: \yo_\Xi(\Gamma) \to \yo_\Delta(\Gamma) \\
+    &: (\Gamma \to \Xi) \to (\Gamma \to \Delta) \\
+    \yo_\gamma(\Gamma)(\delta) &= \gamma \circ \delta
+\end{align*}
+\end{definition}
+
+\begin{definition}[Yoneda lemma]
+We will consider the lemma in terms of the context category $\mathcal{C}$.
+Given a presheaf $T$ over $\mathcal{C}$ and a context $\Gamma \in \mathcal{C}$,
+there is an isomorphism between the set $T(\Gamma)$ and the set of natural transformations $\yo_\Gamma \to T$
+between presheaves.
+
+From left to right, consider an element $A \in T(\Gamma)$
+with which we'll construct the natural transformation.
+Given another context $\Delta \in \mathcal{C}$,
+we then need to define a function from $\gamma : \Delta \to \Gamma$, a substitution, to $T(\Delta)$.
+This is exactly applying the substitution $\gamma$ to $A$, since $A[\gamma] \in T(\Delta)$.
+I denote the natural transformation as $A[\_ : \_ \to \Gamma]$ and the function after applying $\Delta$ as $A[\_ : \Delta \to \Gamma]$, or just $A[\_]$.
+
+From right to left, consider a natural transformation $\tau : \yo_\Gamma \to T$,
+with which we'll produce an element of $T(\Gamma)$.
+Applying $\Gamma$, we have a function $\tau_\Gamma : (\Gamma \to \Gamma) \to T(\Gamma)$.
+Then $\tau_\Gamma(\id_{\Gamma}) \in T(\Gamma)$.
+\end{definition}
+
+\begin{exercise}
+Verify that the above construction is indeed an isomorphism.
+\end{exercise}
+
+\subsection{Representability}
+
+Now back to our natural transformation $\tau : \Tm \to \Ty$.
+We say that $\tau$ is representable if for any context $\Gamma$ and type $A \in \Ty(\Gamma)$,
+there is a context $\Gamma \rhd A \in \mathcal{C}$,
+a substitution $\p_{\Gamma, A} : \Gamma \rhd A \to \Gamma$,
+and a term $\q_{\Gamma, A} \in \Tm(\Gamma \rhd A)$
+such that the following square is a pullback:
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \yo_{\Gamma \rhd A}
+        \arrow[rr, rightarrow, "{\q_{\Gamma, A}[\_ : \_ \to \Gamma \rhd A]}"]
+        \arrow[d, rightarrow, "\yo_{\p_{\Gamma, A}}"'] &&
+    \Tm
+        \arrow[d, rightarrow, "\tau"] \\
+    \yo_{\Gamma}
+        \arrow[rr, rightarrow, "{A[\_ : \_ \to \Gamma]}"'] &&
+    \Ty
+\end{tikzcd}
+\end{center}
+
+As before, $\Gamma \rhd A$ is context extension,
+$\p_{\Gamma, A}$ is a weakening substitution by $A$, and
+$q_{\Gamma, A}$ is the newest bound variable in $\Gamma \rhd A$.
+But this diagram is a little opaque, so let's take a context $\Delta \in \mathcal{C}$ and apply it across the whole diagram.
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=huge]
+    \Delta \to \Gamma \rhd A
+        \arrow[r, rightarrow, "{\q_{\Gamma, A}[\_]}"]
+        \arrow[d, rightarrow, "\p_{\Gamma, A} \circ \_"'] &
+    \Tm(\Delta)
+        \arrow[d, rightarrow, "\tau_\Delta"] \\
+    \Delta \to \Gamma
+        \arrow[r, rightarrow, "{A[\_]}"'] &
+    \Ty(\Delta)
+\end{tikzcd}
+\end{center}
+
+The fact that this square commutes says that given some substitution $\gamma : \Delta \to \Gamma \rhd A$,
+$q_{\Gamma, A}[\gamma]$ has type $A[p_{\Gamma, A} \circ \gamma]$.
+If $\Delta = \Gamma \rhd A$ and $\gamma = \id_{\Gamma \rhd A}$,
+then we recover the fact that $q_{\Gamma, A}$ has type $A[p_{\Gamma, A}]$.
+
+Now let's look at what the pullback gives us.
+We can take any presheaf and natural transformations from it into $\yo_{\Gamma \rhd A}$ and $\yo_{\Gamma}$,
+but what will be most useful to us is to consider, given a context $\Xi \in \mathcal{C}$, a substitution $\gamma : \Xi \to \Gamma$, and a term $a \in \Tm(\Xi)$,
+the presheaf $\yo_{\Xi}$ and the natural transformations $\yo_{\gamma}$ and $a[\_ : \_ \to \Xi]$.
+We'll call the unique morphism $\yo_{\ctxt{\gamma, a}}$, where $\ctxt{\gamma, a} : \Xi \to \Gamma \rhd A$;
+evidently this is meant to suggest substitution extension.
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \yo_{\Xi}
+        \arrow[rrrd, rightarrow, bend left, "{a[\_ : \_ \to \Xi]}"]
+        \arrow[ddr, rightarrow, bend right, "\yo_{\gamma}"']
+        \arrow[dr, rightarrow, dashed, "\yo_{\ctxt{\gamma, a}}"] \\
+    & \yo_{\Gamma \rhd A}
+        \arrow[rr, rightarrow, "{\q_{\Gamma, A}[\_ : \_ \to \Gamma \rhd A]}"]
+        \arrow[d, rightarrow, "\yo_{\p_{\Gamma, A}}"'] &&
+    \Tm
+        \arrow[d, rightarrow, "\tau"] \\
+    & \yo_{\Gamma}
+        \arrow[rr, rightarrow, "{A[\_ : \_ \to \Gamma]}"'] &&
+    \Ty
+\end{tikzcd}
+\end{center}
+
+Once again, let's apply $\Delta \in \mathcal{C}$ across the whole diagram.
+
+\begin{center}
+\begin{tikzcd}[row sep=huge, column sep=large]
+    \Delta \to \Xi
+        \arrow[rrd, rightarrow, bend left, "{a[\_]}"]
+        \arrow[ddr, rightarrow, bend right, "\gamma \circ \_"']
+        \arrow[dr, rightarrow, dashed, "\ctxt{\gamma, a} \circ \_"] \\
+    & \Delta \to \Gamma \rhd A
+        \arrow[r, rightarrow, "{\q_{\Gamma, A}[\_]}"]
+        \arrow[d, rightarrow, "\p_{\Gamma, A} \circ \_"'] &
+    \Tm(\Delta)
+        \arrow[d, rightarrow, "\tau_\Delta"] \\
+    & \Delta \to \Gamma
+        \arrow[r, rightarrow, "{A[\_]}"'] &
+    \Ty(\Delta)
+\end{tikzcd}
+\end{center}
+
+By the commuting triangles, given some substitution $\delta : \Delta \to \Xi$,
+we have $p_{\Gamma, A} \circ \ctxt{\gamma, a} \circ \delta = \gamma \circ \delta$
+and $q_{\Gamma, A}[\ctxt{\gamma, a} \circ \delta] = a[\delta]$.
+If $\Xi = \Delta$ and $\delta = \id_{\Delta}$,
+then we recover the equations $p_{\Gamma, A} \circ \ctxt{\gamma, a} = \gamma$
+and $q_{\Gamma, A}[\ctxt{\gamma, a}] = a$.
+Finally, by uniqueness of the substitution extension and these two equations,
+we recover \cref{lem:pq,lem:comp-comp}.
+
+All of the definitions and equations that were part of a CwF have now been recovered by the definition of a natural model.
+We can continue in this manner and support a $\bot$-structure, $\Pi$-structures, and a $U$-structure
+in terms of pullbacks involving $\tau$,
+but this is beyond the scope of these notes.
+See \citet{nat,algnat}, for instance, for details on their construction.
+
+\clearpage
+\bibliographystyle{plainnat}
+\raggedright
+\bibliography{biblio}
+
+\clearpage
+\appendix
+
+\section{Equations of the Agda Model} \label{app:agda}
+
+\begin{minted}{agda}
+open import Relation.Binary.PropositionalEquality.Core
+
+-- Category laws and terminality
+
+ass : ∀ {Θ Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {ε : Θ ⇒ Ξ} →
+      (γ ∘ δ) ∘ ε ≡ γ ∘ (δ ∘ ε)
+ass = refl
+
+idl : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → id ∘ γ ≡ γ
+idl = refl
+
+idr : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → γ ∘ id ≡ γ
+idr = refl
+
+⟨⟩η : ∀ {Γ} {γ : Γ ⇒ ∙} → γ ≡ ⟨⟩
+⟨⟩η = refl
+
+-- Ty and Tm functor laws
+
+[id] : ∀ {Γ} {A : Ty Γ} → A [ id ] ≡ A
+[id] = refl
+
+[∘] : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} →
+      A [ γ ] [ δ ] ≡ A [ γ ∘ δ ]
+[∘] = refl
+
+⟮id⟯ : ∀ {Γ} {A : Ty Γ} {a : Tm Γ A} → a ⟮ id ⟯ ≡ a
+⟮id⟯ = refl
+
+⟮∘⟯ : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} {a : Tm Γ A} →
+      a ⟮ γ ∘ δ ⟯ ≡ a ⟮ γ ⟯ ⟮ δ ⟯
+⟮∘⟯ = refl
+
+-- Context comprehension laws
+
+infix 40 _∋⟨_,_⟩
+_∋⟨_,_⟩ : ∀ {Δ Γ} → (A : Ty Γ) → (γ : Δ ⇒ Γ) → Tm Δ (A [ γ ]) → (Δ ⇒ Γ ▷ A)
+_ ∋⟨ γ , a ⟩ = ⟨ γ , a ⟩
+
+pβ : ∀ {Δ Γ} {A : Ty Γ} {γ : Δ ⇒ Γ} {a : Tm Δ (A [ γ ])} →
+     p {Γ} {A} ∘ ⟨ γ , a ⟩ ≡ γ
+pβ = refl
+
+qβ : ∀ {Δ Γ} {A : Ty Γ} {γ : Δ ⇒ Γ} {a : Tm Δ (A [ γ ])} →
+     q {Γ} {A} ⟮ ⟨ γ , a ⟩ ⟯ ≡ a
+qβ = refl
+
+⟨pq⟩ : ∀ {Γ} {A : Ty Γ} → ⟨ p , q ⟩ ≡ id {Γ ▷ A}
+⟨pq⟩ = refl
+
+⟨⟩∘ : ∀ {Ξ Δ Γ} {γ : Δ ⇒ Γ} {δ : Ξ ⇒ Δ} {A : Ty Γ} {a : Tm Δ (A [ γ ])} →
+      A ∋⟨ γ , a ⟩ ∘ δ ≡ ⟨ γ ∘ δ , a ⟮ δ ⟯ ⟩
+⟨⟩∘ = refl
+
+-- ⊥-stucture substitution laws
+
+⊥[] : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → ⊥ [ γ ] ≡ ⊥
+⊥[] = refl
+
+abs⟮⟯ : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → {A : Ty Γ} → {a : Tm Γ ⊥} →
+        (abs A a) ⟮ γ ⟯ ≡ abs (A [ γ ]) (a ⟮ γ ⟯)
+abs⟮⟯ = refl
+
+-- Π-structure computation, uniqueness, and substitution laws
+
+Πβ : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {b : Tm (Γ ▷ A) B} →
+     app (lam b) ≡ b
+Πβ = refl
+
+Πη : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {a : Tm Γ (Π A B)} →
+     lam (app a) ≡ a
+Πη = refl
+
+Π[] : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} →
+      (Π A B) [ γ ] ≡ Π (A [ γ ]) (B [ γ ↑ A ])
+Π[] = refl
+
+lam⟮⟯ : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} {b : Tm (Γ ▷ A) B} →
+        (lam b) ⟮ γ ⟯ ≡ lam (b ⟮ γ ↑ A ⟯)
+lam⟮⟯ = refl
+
+app⟮⟯ : ∀ {Δ Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} {γ : Δ ⇒ Γ} {a : Tm Γ (Π A B)} →
+        (app a) ⟮ γ ↑ A ⟯ ≡ app (a ⟮ γ ⟯)
+app⟮⟯ = refl
+
+-- U-structure computation and substitution laws
+
+⊥ᶜβ : ∀ {Γ} → el {Γ} ⊥ᶜ ≡ ⊥
+⊥ᶜβ = refl
+
+Πᶜβ : ∀ {Γ} {A : Tm Γ U} {B : Tm (Γ ▷ el A) U} →
+      el (Πᶜ A B) ≡ Π (el A) (el B)
+Πᶜβ = refl
+
+U[] : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → U [ γ ] ≡ U
+U[] = refl
+
+el[] : ∀ {Δ Γ} {γ : Δ ⇒ Γ} {a : Tm Γ U} → (el a) [ γ ] ≡ el (a ⟮ γ ⟯)
+el[] = refl
+
+⊥ᶜ⟮⟯ : ∀ {Δ Γ} {γ : Δ ⇒ Γ} → (⊥ᶜ ⟮ γ ⟯) ≡ ⊥ᶜ
+⊥ᶜ⟮⟯ = refl
+
+Πᶜ⟮⟯ : ∀ {Δ Γ} {γ : Δ ⇒ Γ} {A : Tm Γ U} {B : Tm (Γ ▷ el A) U} →
+       (Πᶜ A B) ⟮ γ ⟯ ≡ Πᶜ (A ⟮ γ ⟯) (B ⟮ γ ↑ el A ⟯)
+Πᶜ⟮⟯ = refl
+\end{minted}
+\end{document}
